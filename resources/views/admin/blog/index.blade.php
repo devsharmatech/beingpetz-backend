@@ -59,7 +59,7 @@
                                         <th>Image</th>
                                         <th>Category</th>
                                         <th>Title</th>
-
+                                        <th>Author</th>
                                         <th>Created At</th>
                                         <th>Actions</th>
                                     </tr>
@@ -91,7 +91,9 @@
                                                 <small
                                                     class="text-muted">{{ Str::limit($blog->short_description, 70) }}</small>
                                             </td>
-
+                                            <td>
+                                                {{ $blog->author_name }}
+                                            </td>
 
                                             <td>{{ $blog->created_at->format('M d, Y') }}</td>
                                             <td>

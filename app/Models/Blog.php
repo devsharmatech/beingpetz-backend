@@ -35,6 +35,13 @@ class Blog extends Model
     {
         return $this->belongsTo(Category::class, 'category_id');
     }
-   
 
+    /**
+     * Get the blog author's name.
+     * Defaults to "Being Petz Admin" if author_name is null/empty.
+     */
+    public function getAuthorNameAttribute($value)
+    {
+        return $value ?: 'Being Petz Admin';
+    }
 }

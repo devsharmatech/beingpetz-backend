@@ -204,9 +204,9 @@ class AuthApiController extends Controller
         $input = $request->email_phone;
         $isEmail = filter_var($input, FILTER_VALIDATE_EMAIL);
         if ($isEmail) {
-            $user = User::where('email', $input)->where('isComplete', 1)->first();
+            $user = User::where('email', $input)->where('isComplete', 1)->where('deleted_at', 1)->first();
         } else {
-            $user = User::where('phone', $input)->where('isComplete', 1)->first();
+            $user = User::where('phone', $input)->where('isComplete', 1)->where('deleted_at', 1)->first();
         }
         if (!isset($user->id)) {
             return response()->json(['status' => false, 'message' => "User not found."], 200);
@@ -234,7 +234,7 @@ public function login_old2(Request $request)
     }
 
     // Find user by email
-    $user = User::where('email', $request->email)->where('isComplete', 1)->first();
+    $user = User::where('email', $request->email)->where('isComplete', 1)->where('deleted_at', 1)->first();
 
     if (!$user) {
         return response()->json(['status' => false, 'message' => "User not found."], 200);
@@ -270,7 +270,7 @@ public function login(Request $request)
     }
 
     // Find user by email
-    $user = User::where('email', $request->email)->where('isComplete', 1)->first();
+    $user = User::where('email', $request->email)->where('isComplete', 1)->where('deleted_at', 1)->first();
 
     if (!$user) {
         return response()->json(['status' => false, 'message' => "User not found."], 200);
@@ -312,7 +312,7 @@ public function verifyOtpLogin(Request $request)
     }
 
     // Find user
-    $user = User::where('email', $request->email)->where('isComplete', 1)->with('pets')->first();
+    $user = User::where('email', $request->email)->where('isComplete', 1)->where('deleted_at', 1)->with('pets')->first();
 
     if (!$user) {
         return response()->json(['status' => false, 'message' => "User not found."], 200);
@@ -358,7 +358,7 @@ public function socialLogin(Request $request)
     $lastName = isset($nameParts[1]) ? $nameParts[1] : '';
 
     
-    $user = User::where('email', $request->email)->first();
+    $user = User::where('email', $request->email)->where('deleted_at', 1)->first();
 
     if (!$user) {
         $user = User::create([
@@ -385,8 +385,19 @@ public function socialLogin(Request $request)
                 "user_id" => 'required|exists:users,id',
                 "first_name" => 'required|string',
                 "last_name" => 'nullable|string',
-                'email' => 'required|email|unique:users,email,' . $request->user_id,
-                'phone' => 'required|unique:users,phone,' . $request->user_id,
+                'email' => [
+                    'required',
+                    'email',
+                    \Illuminate\Validation\Rule::unique('users', 'email')->ignore($request->user_id)->where(function ($query) {
+                        return $query->where('deleted_at', 1);
+                    })
+                ],
+                'phone' => [
+                    'required',
+                    \Illuminate\Validation\Rule::unique('users', 'phone')->ignore($request->user_id)->where(function ($query) {
+                        return $query->where('deleted_at', 1);
+                    })
+                ],
                 'latitude' => 'nullable|string',
                 'longitude' => 'nullable|string',
                 'locality' => 'nullable|string',
@@ -402,7 +413,9 @@ public function socialLogin(Request $request)
         if (!$user) {
             return response()->json(['status' => false, 'message' => 'User not found!']);
         } else {
-            
+            $oldEmail = $user->email;
+            $newEmail = $request->email;
+
             if ($request->hasFile('profile')) {
                     $file = $request->file('profile');
                     $manager = new ImageManager(Driver::class);
@@ -428,6 +441,17 @@ public function socialLogin(Request $request)
             $user->city = $request->city;
             $user->state = $request->state;
             $user->save();
+
+            // If email was changed, send notification mail
+            if ($oldEmail !== $newEmail) {
+                try {
+                    Mail::raw("Your Beingpetz account email has been updated to $newEmail. If you didn't do this, please contact support.", function ($message) use ($newEmail) {
+                        $message->to($newEmail)->subject('Email Updated - Beingpetz');
+                    });
+                } catch (\Exception $e) {
+                    \Log::error('API profile email update notification failed: ' . $e->getMessage());
+                }
+            }
 
             return response()->json(['status' => true, 'message' => 'Successfully update your changes!', 'user' => $user]);
         }
@@ -553,16 +577,16 @@ public function socialLogin(Request $request)
         $isEmail = filter_var($input, FILTER_VALIDATE_EMAIL);
 
         if ($isEmail) {
-            $exist = User::where('email', $input)->first();
+            $exist = User::where('email', $input)->where('deleted_at', 1)->first();
             if (!$exist) {
-                return response()->json(['status' => false, 'message' => 'This Email not register with us.'], 200);
+                return response()->json(['status' => false, 'message' => 'This Email not registered with us or account is inactive.'], 200);
             }
             
         } else {
             // It's a phone number
-            $exist = User::where('phone', $input)->first();
+            $exist = User::where('phone', $input)->where('deleted_at', 1)->first();
             if (!$exist) {
-               return response()->json(['status' => false, 'message' => 'This Phone not register with us.'], 200);
+               return response()->json(['status' => false, 'message' => 'This Phone not registered with us or account is inactive.'], 200);
             }
             
         }
@@ -582,7 +606,10 @@ public function socialLogin(Request $request)
         if ($validate->fails()) {
             return response()->json(['status' => false, 'message' => $validate->errors()->first()], 200);
         }
-        $user = User::where('id', $request->user_id)->first();
+        $user = User::where('id', $request->user_id)->where('deleted_at', 1)->first();
+        if (!$user) {
+            return response()->json(['status' => false, 'message' => 'User not found or account is inactive.'], 200);
+        }
         $user->password=bcrypt($request->password);
         $user->save();
         return response()->json(['status' => true, 'message' => 'Password updated successfully.', 'data' => $user], 200);

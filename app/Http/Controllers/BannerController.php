@@ -59,16 +59,14 @@ class BannerController extends Controller
 
             $request->validate([
                 'link' => 'nullable|url|max:255',
-                'mobile_image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048|dimensions:max_width=360,max_height=360',
-                'desktop_image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048|dimensions:max_width=736,max_height=736',
+                'mobile_image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+                'desktop_image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
                 'sort' => 'nullable|integer|min:0',
                 'start_date' => 'nullable|date|after_or_equal:today',
                 'end_date' => 'nullable|date|after_or_equal:start_date',
             ], [
                 'mobile_image.max' => 'Mobile image must not exceed 2MB',
                 'desktop_image.max' => 'Desktop image must not exceed 2MB',
-                'mobile_image.dimensions' => 'Mobile image dimensions should not exceed 360x260px',
-                'desktop_image.dimensions' => 'Desktop image dimensions should not exceed 736x736px',
                 'end_date.after_or_equal' => 'End date must be after or equal to start date',
             ]);
 
@@ -92,12 +90,6 @@ class BannerController extends Controller
                 $imageInfo = getimagesize($mobileImage);
                 $width = $imageInfo[0];
                 $height = $imageInfo[1];
-                
-                if ($width > 360 || $height > 360) {
-                    return redirect()->back()
-                        ->withInput()
-                        ->with('error', 'Mobile image dimensions should not exceed 360x360px. Your image is ' . $width . 'x' . $height . 'px.');
-                }
 
                 $mobileImageName = time() . '_mobile_' . uniqid() . '.' . $mobileImage->getClientOriginalExtension();
                 $mobileFullPath = public_path('uploads/banner/' . $mobileImageName);
@@ -125,12 +117,6 @@ class BannerController extends Controller
                 $imageInfo = getimagesize($desktopImage);
                 $width = $imageInfo[0];
                 $height = $imageInfo[1];
-                
-                if ($width > 736 || $height > 736) {
-                    return redirect()->back()
-                        ->withInput()
-                        ->with('error', 'Desktop image dimensions should not exceed 736x736px. Your image is ' . $width . 'x' . $height . 'px.');
-                }
 
                 $desktopImageName = time() . '_desktop_' . uniqid() . '.' . $desktopImage->getClientOriginalExtension();
                 $desktopFullPath = public_path('uploads/banner/' . $desktopImageName);
@@ -185,16 +171,14 @@ class BannerController extends Controller
 
         $request->validate([
             'link' => 'nullable|url|max:255',
-            'mobile_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048|dimensions:max_width=360,max_height=360',
-            'desktop_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048|dimensions:max_width=736,max_height=736',
+            'mobile_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'desktop_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             'sort' => 'nullable|integer|min:0',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
         ], [
             'mobile_image.max' => 'Mobile image must not exceed 2MB',
             'desktop_image.max' => 'Desktop image must not exceed 2MB',
-            'mobile_image.dimensions' => 'Mobile image dimensions should not exceed 360x360px',
-            'desktop_image.dimensions' => 'Desktop image dimensions should not exceed 736x736px',
             'end_date.after_or_equal' => 'End date must be after or equal to start date',
         ]);
 
@@ -215,12 +199,6 @@ class BannerController extends Controller
             $imageInfo = getimagesize($mobileImage);
             $width = $imageInfo[0];
             $height = $imageInfo[1];
-            
-            if ($width > 360 || $height > 360) {
-                return redirect()->back()
-                    ->withInput()
-                    ->with('error', 'Mobile image dimensions should not exceed 360x360px. Your image is ' . $width . 'x' . $height . 'px.');
-            }
 
             // Delete old mobile image
             if ($banner->mobile_image && file_exists(public_path($banner->mobile_image))) {
@@ -246,12 +224,6 @@ class BannerController extends Controller
             $imageInfo = getimagesize($desktopImage);
             $width = $imageInfo[0];
             $height = $imageInfo[1];
-            
-            if ($width > 736 || $height > 736) {
-                return redirect()->back()
-                    ->withInput()
-                    ->with('error', 'Desktop image dimensions should not exceed 736x736px. Your image is ' . $width . 'x' . $height . 'px.');
-            }
 
             // Delete old desktop image
             if ($banner->desktop_image && file_exists(public_path($banner->desktop_image))) {
@@ -367,13 +339,6 @@ class BannerController extends Controller
             if ($request->hasFile('image')) {
                 $image = $request->file('image');
                 list($width, $height) = getimagesize($image->getPathname());
-                
-                // Strict validation for exact size
-                if ($width != 735 || $height != 691) {
-                    return redirect()->back()
-                        ->withInput()
-                        ->with('error', 'Image size must be exactly 735x691 pixels. Your image is '.$width.'x'.$height.' pixels.');
-                }
             }
 
             // Ensure directory exists
@@ -494,13 +459,6 @@ class BannerController extends Controller
             if ($request->hasFile('image')) {
                 $image = $request->file('image');
                 list($width, $height) = getimagesize($image->getPathname());
-                
-                // Strict validation for exact size
-                if ($width != 735 || $height != 691) {
-                    return redirect()->back()
-                        ->withInput()
-                        ->with('error', 'Image size must be exactly 735x691 pixels. Your image is '.$width.'x'.$height.' pixels.');
-                }
             }
 
             $bannerData = $request->except('image');

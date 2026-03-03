@@ -72,5 +72,19 @@ public function communityMessages()
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function getProfileAttribute($value)
+    {
+        if (!$value) {
+            return asset('assets/images/community-default.png');
+        }
+        return asset($value);
+    }
 
+    public function getCoverImageAttribute($value)
+    {
+        if (!$value) {
+            return asset('assets/images/community-cover-default.png');
+        }
+        return asset($value);
+    }
 }

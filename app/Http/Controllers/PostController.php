@@ -1254,7 +1254,7 @@ public function share(Request $request)
     {
         $users = User::all();
         $post = Post::with(['pet', 'parent', 'images', 'videos'])->findOrFail($id);
-        $pets = Pet::where('user_id', $post->user_id)->select('id', 'name')->get();
+        $pets = Pet::where('user_id', $post->parent_id)->select('id', 'name')->get();
         
         return view('admin.post.edit', compact('post', 'users', 'pets'));
     }
@@ -1392,23 +1392,27 @@ public function deleteVideo($id)
         return response()->json(['success' => false, 'message' => $e->getMessage()]);
     }
 }
-public function update(Request $request, $id)
-{
-    $post = Post::findOrFail($id);
+    public function update(Request $request, $id)
+    {
+        $post = Post::findOrFail($id);
 
-    $validatedData = $request->validate([
-        'type' => 'required|in:normal,birthday,repost',
-        'description' => 'required|string',
-        'images' => 'nullable|array|min:0|max:10',
-        'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
-        'video' => 'nullable|file|mimes:mp4,3gp,mov,avi|max:20480',
-    ]);
+        $validatedData = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'pet_id' => 'required|exists:pets,id',
+            'type' => 'required|in:normal,birthday,repost',
+            'description' => 'required|string',
+            'images' => 'nullable|array|min:0|max:10',
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
+            'video' => 'nullable|file|mimes:mp4,3gp,mov,avi|max:20480',
+        ]);
 
-    // ✅ Step 3: Update post details
-    $post->update([
-        'content' => $validatedData['description'],
-        'post_type' => $validatedData['type'],
-    ]);
+        // ✅ Step 3: Update post details
+        $post->update([
+            'parent_id' => $validatedData['user_id'],
+            'pet_id' => $validatedData['pet_id'],
+            'content' => $validatedData['description'],
+            'post_type' => $validatedData['type'],
+        ]);
 
     // ✅ Step 4: Handle Images (Keep old if not replaced)
         if ($request->hasFile('images')) {

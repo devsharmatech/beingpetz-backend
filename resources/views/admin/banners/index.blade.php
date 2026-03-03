@@ -332,7 +332,7 @@
                                     @error('mobile_image')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
-                                    <small class="text-muted">Recommended size: 360x360px (Max: 360x360px, 2MB)</small>
+                                    <small class="text-muted">Max size: 2MB</small>
 
                                     <!-- Mobile Image Preview -->
                                     <div id="mobilePreview" class="mt-2" style="display: none;">
@@ -389,7 +389,7 @@
                                     @error('desktop_image')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
-                                    <small class="text-muted">Recommended size: 736x736px (Max: 736x736px, 2MB)</small>
+                                    <small class="text-muted">Max size: 2MB</small>
 
                                     <!-- Desktop Image Preview -->
                                     <div id="desktopPreview" class="mt-2" style="display: none;">

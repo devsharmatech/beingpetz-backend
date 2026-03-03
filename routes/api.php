@@ -33,6 +33,7 @@ use App\Http\Controllers\MealRecordController;
 use App\Http\Controllers\WeightRecordController;
 use App\Http\Controllers\GeneralRecordController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\Api\CMSApiController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -250,5 +251,12 @@ Route::controller(NotificationController::class)->prefix('v1/notification')->gro
     Route::post('delete', 'deleteNotification');       
     Route::post('clear', 'clearAllNotifications');     
     Route::post('update-device/token', 'updateToken');     
+});
+
+Route::controller(CMSApiController::class)->prefix('v1/cms')->group(function () {
+    Route::get('terms', 'getTerms');
+    Route::get('privacy', 'getPrivacyPolicy');
+    Route::get('legal', 'getLegal');
+    Route::get('settings', 'getSettings');
 });
 

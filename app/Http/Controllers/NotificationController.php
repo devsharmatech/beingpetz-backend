@@ -607,21 +607,25 @@ public function cleanup()
         }
 
         $notification = Notification::create([
-            'user_id' =>auth()->id(),
-            'title'        => $validated['title'],
-            'message'      => $validated['message'],
-            'type'         => $validated['type'],
-            'image'        => $imagePath,
-            'audience'     => $audience,
-            'status'       => $validated['status'] ?? false,
-            'schedule_time'=> $scheduleTime,
-            'sender_id'    => auth()->id(),
+            'user_id'       => $validated['audience_type'] === 'single' ? ($request->user_id ?? auth()->id()) : null,
+            'title'         => $validated['title'],
+            'message'       => $validated['message'],
+            'type'          => $validated['type'],
+            'image'         => $imagePath,
+            'audience'      => array_merge($audience ?? [], ['type' => $validated['audience_type']]),
+            'status'        => $validated['status'] ?? true,
+            'scheduled_at'  => $scheduleTime,
+            'sender_id'     => auth()->id(),
+            'is_sent'       => false,
         ]);
 
         // If scheduled → dispatch job
         if ($scheduleTime) {
             SendScheduledNotification::dispatch($notification)
-                ->delay(now()->parse($scheduleTime));
+                ->delay(Carbon::parse($scheduleTime));
+        } else {
+            // Send immediately
+            $this->sendNotification($notification);
         }
 
         return redirect()->route('admin.notifications.index')
@@ -672,14 +676,24 @@ public function cleanup()
         }
 
         $notification->update([
-            'title' => $validated['title'],
-            'message' => $validated['message'],
-            'type' => $validated['type'],
-            'image' => $imagePath,
-            'audience' => $audience,
-            'status' => $validated['status'] ?? false,
-            'schedule_time' => $scheduleTime, // Add this
+            'title'        => $validated['title'],
+            'message'      => $validated['message'],
+            'type'         => $validated['type'],
+            'image'        => $imagePath,
+            'audience'     => array_merge($audience ?? [], ['type' => $validated['audience_type']]),
+            'status'       => $validated['status'] ?? true,
+            'scheduled_at' => $scheduleTime,
         ]);
+
+        // If not sent yet and scheduled/immediate, handle accordingly
+        if (!$notification->is_sent) {
+            if ($scheduleTime) {
+                SendScheduledNotification::dispatch($notification)
+                    ->delay(Carbon::parse($scheduleTime));
+            } else {
+                $this->sendNotification($notification);
+            }
+        }
 
         return redirect()->route('admin.notifications.index')
             ->with('success', 'Notification updated successfully!');
@@ -714,42 +728,42 @@ public function cleanup()
         // Get target users based on audience
         $users = $this->getTargetUsers($notification);
 
-        // Create notifications for each user
-        foreach ($users as $user) {
-            $userNotification = $notification->replicate();
-            $userNotification->user_id = $user->id;
-            $userNotification->is_sent = true;
-            $userNotification->save();
+        Log::info('Sending notification to users', ['count' => $users->count()]);
 
-            // Here you can integrate with push notification services
-            // like Firebase Cloud Messaging, OneSignal, etc.
+        // Send push notification to each user
+        foreach ($users as $user) {
             $this->sendPushNotification($user, $notification);
         }
 
-        $notification->update(['is_sent' => true]);
+        $notification->update(['is_sent' => true, 'status' => true]);
     }
 
     private function getTargetUsers(Notification $notification)
     {
-        $query = User::query();
+        $query = User::query()->whereNotNull('device_token');
 
         if ($notification->audience) {
             $audience = $notification->audience;
+            $type = $audience['type'] ?? 'all';
 
-            if (!empty($audience['locations'])) {
-                $query->whereIn('location', $audience['locations']);
-            }
+            if ($type === 'single' && $notification->user_id) {
+                $query->where('id', $notification->user_id);
+            } elseif ($type === 'custom') {
+                if (!empty($audience['locations'])) {
+                    $query->whereIn('location', $audience['locations']);
+                }
 
-            if (!empty($audience['user_status'])) {
-                $query->where('status', $audience['user_status']);
-            }
+                if (!empty($audience['user_status'])) {
+                    $query->where('status', $audience['user_status']);
+                }
 
-            if (!empty($audience['user_groups'])) {
-                // Assuming you have a way to determine user groups
-                $query->whereHas('groups', function ($q) use ($audience) {
-                    $q->whereIn('name', $audience['user_groups']);
-                });
+                if (!empty($audience['user_groups'])) {
+                    $query->whereHas('groups', function ($q) use ($audience) {
+                        $q->whereIn('name', $audience['user_groups']);
+                    });
+                }
             }
+            // If type is 'all', no extra filters needed beyond device_token
         }
 
         return $query->get();
@@ -757,48 +771,25 @@ public function cleanup()
 
     private function sendPushNotification(User $user, Notification $notification)
     {
-        // Implement your push notification logic here
-        // This could integrate with Firebase, OneSignal, etc.
-
-        // Example with Firebase
-        /*
-        $firebaseToken = $user->fcm_token; // Assuming you store FCM tokens
-
-        if ($firebaseToken) {
-            $SERVER_API_KEY = 'YOUR_SERVER_API_KEY';
-
-            $data = [
-                "to" => $firebaseToken,
-                "notification" => [
-                    "title" => $notification->title,
-                    "body" => $notification->message,
-                    "image" => $notification->image ? asset('storage/' . $notification->image) : null,
-                ],
-                "data" => [
-                    "type" => $notification->type,
-                    "notification_id" => $notification->id,
-                ]
-            ];
-
-            $dataString = json_encode($data);
-
-            $headers = [
-                'Authorization: key=' . $SERVER_API_KEY,
-                'Content-Type: application/json',
-            ];
-
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, 'https://fcm.googleapis.com/fcm/send');
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $dataString);
-
-            $response = curl_exec($ch);
-            curl_close($ch);
+        if (!$user->device_token) {
+            return;
         }
-        */
+
+        try {
+            $this->fcm->sendNotification(
+                [$user->device_token],
+                [
+                    'title'          => $notification->title,
+                    'body'           => $notification->message,
+                    'sender_id'      => (string) $notification->sender_id,
+                    'type'           => $notification->type,
+                    'notification_id'=> (string) $notification->id,
+                    'image'          => $notification->image ? asset('storage/' . $notification->image) : null,
+                ]
+            );
+        } catch (\Exception $e) {
+            Log::error('Firebase send error: ' . $e->getMessage());
+        }
     }
 
    public function bulkUpload(Request $request)

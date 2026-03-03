@@ -39,6 +39,8 @@ class User extends Authenticatable
         'role_id',
         'custom_permissions',
         'last_login',
+        'last_active_at',
+        'last_activity_details',
         'deleted_at'
     ];
 
@@ -58,6 +60,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'last_login' => 'datetime',
+            'last_active_at' => 'datetime',
             'password' => 'hashed',
             'custom_permissions' => 'array',
             'isComplete' => 'boolean'
@@ -130,7 +133,7 @@ class User extends Authenticatable
      */
     public function getRoleNameAttribute()
     {
-        return $this->role ? $this->role->name : ($this->role ?? 'user');
+        return $this->roleRelation ? $this->roleRelation->name : ($this->attributes['role'] ?? 'user');
     }
 
     /**
@@ -150,9 +153,9 @@ class User extends Authenticatable
             }
         }
 
-        // Check role permissions
-        if ($this->role) {
-            return $this->role->hasPermission($permissionName);
+        // Check role permissions using relationship
+        if ($this->roleRelation) {
+            return $this->roleRelation->hasPermission($permissionName);
         }
 
         return false;
@@ -191,9 +194,9 @@ class User extends Authenticatable
     {
         $permissions = [];
         
-        // Get role permissions
-        if ($this->role) {
-            $permissions = array_merge($permissions, $this->role->getPermissionNames());
+        // Get role permissions using relationship
+        if ($this->roleRelation) {
+            $permissions = array_merge($permissions, $this->roleRelation->getPermissionNames());
         }
         
         // Add custom permissions

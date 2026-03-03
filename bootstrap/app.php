@@ -29,9 +29,14 @@ return Application::configure(basePath: dirname(__DIR__))
     )
 
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->prepend(\App\Http\Middleware\CheckMaintenance::class);
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureIsAdmin::class,
             'check.permission' => CheckPermission::class,
+            'last_active' => \App\Http\Middleware\UpdateLastActiveMiddleware::class,
+        ]);
+        $middleware->appendToGroup('api', [
+            \App\Http\Middleware\UpdateLastActiveMiddleware::class,
         ]);
     })
 

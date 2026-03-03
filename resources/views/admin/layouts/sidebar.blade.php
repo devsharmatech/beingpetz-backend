@@ -215,7 +215,7 @@
                 @endif
 
                 <!-- Messages Manager -->
-                @if (checkPermission('messages', $user))
+                <!-- @if (checkPermission('messages', $user))
                     <li class="{{ request()->routeIs('admin.messages.*') ? 'mm-active' : '' }}">
                         <a href="{{ route('admin.messages.index') }}"
                             class="waves-effect {{ request()->routeIs('admin.messages.*') ? 'active-link' : '' }}">
@@ -223,7 +223,7 @@
                             <span>Messages Manager</span>
                         </a>
                     </li>
-                @endif
+                @endif -->
 
                 <!-- Push Notification -->
                 @if (checkPermission('notifications', $user))
@@ -259,6 +259,17 @@
                             </a>
                         </li>
                     @endif
+                @endif
+
+                <!-- Legal & Compliance -->
+                @if (checkPermission('terms-conditions', $user)) 
+                    <li class="{{ request()->routeIs('admin.legal.*') ? 'mm-active' : '' }}">
+                        <a href="{{ route('admin.legal.index') }}"
+                            class="waves-effect {{ request()->routeIs('admin.legal.*') ? 'active-link' : '' }}">
+                            <i class="fas fa-file-contract"></i>
+                            <span>Terms & Conditions</span>
+                        </a>
+                    </li>
                 @endif
 
                 <!-- Settings -->

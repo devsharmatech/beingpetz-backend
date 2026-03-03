@@ -176,17 +176,23 @@
                                                 @endif
                                             </td>
                                             <td>
-                                                @if ($parent->last_login)
+                                                @php
+                                                    $lastActive = $parent->last_active_at ?? $parent->last_login;
+                                                @endphp
+                                                @if ($lastActive)
                                                     <span
                                                         class="badge 
-                                                        @if ($parent->last_login->gt(now()->subDay())) bg-success
-                                                        @elseif($parent->last_login->gt(now()->subWeek())) bg-warning
-                                                        @elseif($parent->last_login->gt(now()->subMonth())) bg-info
-                                                        @else bg-secondary @endif">
-                                                        {{ $parent->last_login->diffForHumans() }}
+                                                        @if ($lastActive->gt(now()->subDay())) bg-success
+                                                        @elseif($lastActive->gt(now()->subWeek())) bg-warning
+                                                        @elseif($lastActive->gt(now()->subMonth())) bg-info
+                                                        @else bg-secondary @endif"
+                                                        data-bs-toggle="tooltip" 
+                                                        data-bs-placement="top" 
+                                                        title="{{ $parent->last_activity_details ?? 'Logged in' }}">
+                                                        {{ $lastActive->diffForHumans() }}
                                                     </span>
                                                 @else
-                                                    <span class="badge bg-secondary">Never</span>
+                                                    <span class="badge bg-secondary">Never Active</span>
                                                 @endif
                                             </td>
                                             <td>{{ $parent->created_at->format('M d, Y') }}</td>

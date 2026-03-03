@@ -55,6 +55,8 @@ class BlogController extends Controller
             'short_description' => $request->short_description,
             'content'           => $request->content,
             'image'             => $imagePath,
+            'author_name'       => $request->author_name ?? null,
+            'author_link'       => $request->author_link ?? null,
         ]);
 
         return response()->json(['status'=>true,'blog'=>$blog], 201);
@@ -102,6 +104,8 @@ class BlogController extends Controller
             'short_description' => $request->short_description ?? $blog->short_description,
             'content'           => $request->content ?? $blog->content,
             'image'             => $imagePath,
+            'author_name'       => $request->author_name ?? $blog->author_name,
+            'author_link'       => $request->author_link ?? $blog->author_link,
         ]);
 
         return response()->json(['status'=>true,'blog'=>$blog]);

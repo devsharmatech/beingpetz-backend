@@ -46,6 +46,15 @@
         padding: 0.25rem 0.5rem;
         font-size: 0.875rem;
     }
+
+    .badge-purple {
+        background-color: #6f42c1;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-weight: 500;
+        font-size: 0.85em;
+    }
 </style>
 
 @section('content')
@@ -56,6 +65,9 @@
                     <div class="card-header d-flex justify-content-between">
                         <h3 class="card-title">User & Vendor Management</h3>
                         <div class="card-tools">
+                            <!-- <a href="{{ route('admin.roles.create') }}" class="btn btn-secondary mr-2">
+                                <i class="fas fa-plus"></i> Add New Role
+                            </a> -->
                             <a href="{{ route('admin.uservendors.create') }}" class="btn btn-primary">
                                 <i class="fas fa-plus"></i> Add New User/Vendor
                             </a>
@@ -120,6 +132,72 @@
                                             </div>
                                         </td>
                                     </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Roles & Permissions Management</h3>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-bordered table-hover" id="rolesTable">
+                            <thead>
+                                <tr>
+                                    <th width="5%">ID</th>
+                                    <th width="15%">Role Name</th>
+                                    <th width="50%">Permissions</th>
+                                    <th width="15%">Description</th>
+                                    <th width="15%">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($roles as $role)
+                                <tr>
+                                    <td>{{ $role->id }}</td>
+                                    <td>{{ ucfirst($role->name) }}</td>
+                                    <td>
+                                        @if($role->permissions->count() > 0)
+                                            @foreach($role->permissions as $permission)
+                                                <span class="badge badge-purple mb-1">{{ $permission->display_name ?? $permission->name }}</span>
+                                            @endforeach
+                                        @else
+                                            <span class="text-muted">No specific permissions assigned</span>
+                                        @endif
+                                        @if($role->default_permissions)
+                                             <div class="mt-1">
+                                                <small class="text-muted">Default: </small>
+                                                @if(is_array($role->default_permissions))
+                                                    @foreach($role->default_permissions as $perm)
+                                                        <span class="badge badge-light border mb-1">{{ $perm }}</span>
+                                                    @endforeach
+                                                @endif
+                                             </div>
+                                        @endif
+                                    </td>
+                                    <td>{{ $role->description ?? 'N/A' }}</td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a href="{{ route('admin.roles.edit', $role->id) }}" class="btn btn-primary btn-sm" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            
+                                            <form action="{{ route('admin.roles.destroy', $role->id) }}" method="POST" class="d-inline">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this role?')" title="Delete">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
                                 @endforeach
                             </tbody>
                         </table>

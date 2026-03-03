@@ -4,44 +4,94 @@
 @endsection
 
 @section('css')
-    <!-- Your custom CSS keeps same, place here or in master -->
-@endsection
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-
-
 <style>
+    :root {
+        --primary-color: #6366f1;
+        --secondary-color: #4f46e5;
+    }
+    .card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+    .card-header {
+        background-color: transparent;
+        border-bottom: 1px solid #f3f4f6;
+        padding: 1.5rem;
+    }
+    .page-title {
+        font-weight: 700;
+        color: #111827;
+        font-size: 1.5rem;
+    }
+    .form-label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+    }
+    .form-control, .form-select {
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        border: 1px solid #d1d5db;
+        transition: all 0.2s;
+    }
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    }
+    .image-upload-wrapper {
+        border: 2px dashed #d1d5db;
+        border-radius: 15px;
+        padding: 2rem;
+        text-align: center;
+        background-color: #f9fafb;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    .image-upload-wrapper:hover {
+        border-color: var(--primary-color);
+        background-color: #eff6ff;
+    }
     .required:after {
         content: " *";
-        color: red;
+        color: #ef4444;
     }
-
     .community-image-preview {
-        width: 150px;
-        height: 150px;
+        width: 100px;
+        height: 100px;
         object-fit: cover;
-        border-radius: 8px;
-        border: 2px solid #e9ecef;
-        margin-top: 10px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
-
     .cover-image-preview {
         width: 100%;
-        height: 200px;
+        height: 180px;
         object-fit: cover;
-        border-radius: 8px;
-        border: 2px solid #e9ecef;
-        margin-top: 10px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
-
-    .current-image {
-        border: 2px solid #28a745;
-        padding: 2px;
+    .btn-primary {
+        background-color: var(--primary-color);
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 600;
+    }
+    .btn-primary:hover {
+        background-color: var(--secondary-color);
+    }
+    .btn-light {
+        background-color: #f3f4f6;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 600;
     }
 </style>
+@endsection
 
 @section('content')
     <div class="container-fluid py-4">
@@ -85,8 +135,8 @@
                                     <!-- Community Description -->
                                     <div class="mb-4">
                                         <label for="description" class="form-label">Description</label>
-                                        <textarea id="description" name="description" rows="5" placeholder="write Community Description"
-                                            class="form-control @error('description') is-invalid @enderror">{{ old('description', $community->description) }}</textarea>
+                                        <textarea id="description" name="description" rows="5" placeholder="Write Community Description"
+                                            class="form-control summernote @error('description') is-invalid @enderror">{!! old('description', $community->description) !!}</textarea>
                                         @error('description')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
@@ -296,9 +346,9 @@
 
     <script>
         $(document).ready(function() {
-            // Initialize Select2 for multiple member selection
-            $('.select2-multiple').select2({
-                placeholder: "Select members",
+            // Initialize Select2
+            $('.select2, .select2-multiple').select2({
+                placeholder: "Select options",
                 allowClear: true
             });
 

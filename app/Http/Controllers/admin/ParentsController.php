@@ -111,8 +111,20 @@ class ParentsController extends Controller
         $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'nullable|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $id,
-            'phone' => 'nullable|string|unique:users,phone,' . $id,
+            'email' => [
+                'required',
+                'email',
+                \Illuminate\Validation\Rule::unique('users', 'email')->ignore($id)->where(function ($query) {
+                    return $query->where('deleted_at', 1);
+                })
+            ],
+            'phone' => [
+                'nullable',
+                'string',
+                \Illuminate\Validation\Rule::unique('users', 'phone')->ignore($id)->where(function ($query) {
+                    return $query->where('deleted_at', 1);
+                })
+            ],
             'locality' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:255',
             'state' => 'nullable|string|max:255',
@@ -120,6 +132,8 @@ class ParentsController extends Controller
             'profile' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
         ]);
 
+        $oldEmail = $parent->email;
+        $newEmail = $request->email;
         $parentData = $request->except('password', 'password_confirmation', 'profile');
 
         if ($request->filled('password')) {
@@ -140,6 +154,17 @@ class ParentsController extends Controller
         }
 
         $parent->update($parentData);
+
+        // If email was changed, send notification mail
+        if ($oldEmail !== $newEmail) {
+            try {
+                Mail::raw("Your Beingpetz account email has been updated to $newEmail. If you didn't do this, please contact support.", function ($message) use ($newEmail) {
+                    $message->to($newEmail)->subject('Email Updated - Beingpetz');
+                });
+            } catch (\Exception $e) {
+                \Log::error('Parent email update notification failed: ' . $e->getMessage());
+            }
+        }
 
         return redirect()->route('admin.parents.index')->with('success', 'Parent updated successfully.');
     }
@@ -200,6 +225,7 @@ public function exportCSV(Request $request)
             'State',
             'Pets Count',
             'Last Active',
+            'Last Activity Details',
             'Created Date',
             'Status'
         ]);
@@ -223,13 +249,13 @@ public function exportCSV(Request $request)
             }
 
             $status = 'Inactive';
-            if ($parent->last_login) {
-                $lastLogin = Carbon::parse($parent->last_login);
-                if ($lastLogin->gt(Carbon::now()->subDay())) {
+            $lastActive = $parent->last_active_at ?? $parent->last_login;
+            if ($lastActive) {
+                if ($lastActive->gt(Carbon::now()->subDay())) {
                     $status = 'Daily Active';
-                } elseif ($lastLogin->gt(Carbon::now()->subWeek())) {
+                } elseif ($lastActive->gt(Carbon::now()->subWeek())) {
                     $status = 'Weekly Active';
-                } elseif ($lastLogin->gt(Carbon::now()->subMonth())) {
+                } elseif ($lastActive->gt(Carbon::now()->subMonth())) {
                     $status = 'Monthly Active';
                 }
             }
@@ -244,7 +270,8 @@ public function exportCSV(Request $request)
                 $parent->city ?? 'N/A',
                 $parent->state ?? 'N/A',
                 $petsCount,
-                $parent->last_login ? Carbon::parse($parent->last_login)->format('Y-m-d H:i:s') : 'Never',
+                $lastActive ? $lastActive->format('Y-m-d H:i:s') : 'Never',
+                $parent->last_activity_details ?? 'Logged in',
                 $parent->created_at->format('Y-m-d H:i:s'),
                 $status
             ]);

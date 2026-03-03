@@ -24,6 +24,7 @@ use App\Http\Controllers\admin\UserVendorController;
 
 use App\Http\Controllers\admin\RoleController;
 use App\Http\Controllers\admin\PermissionController;
+use App\Http\Controllers\admin\LegalController;
 
 
 Route::name('admin.')->group(function () {
@@ -260,5 +261,11 @@ Route::name('admin.')->group(function () {
     });
 
 
+
+    // Legal & Compliance Routes
+    Route::controller(LegalController::class)->prefix('legal-pages')->name('legal.')->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::post('/update', 'update')->name('update');
+    });
 
 });

@@ -20,12 +20,14 @@ class UserVendorController extends Controller
             ->latest()
             ->paginate(10);
         
-        return view('admin.uservendors.index', compact('users'));
+        $roles = Role::with('permissions')->get();
+        
+        return view('admin.uservendors.index', compact('users', 'roles'));
     }
 
     public function create()
     {
-        $roles = Role::all();
+        $roles = Role::where('name', '!=', 'admin')->get();
         return view('admin.uservendors.create' , compact('roles'));
     }
 
@@ -86,7 +88,13 @@ class UserVendorController extends Controller
         $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $id,
+            'email' => [
+                'required',
+                'email',
+                \Illuminate\Validation\Rule::unique('users', 'email')->ignore($id)->where(function ($query) {
+                    return $query->where('deleted_at', 1);
+                })
+            ],
             'phone' => 'required|string|max:15',
             'role_id' => 'required|exists:roles,id',
             'city' => 'nullable|string',
@@ -96,6 +104,8 @@ class UserVendorController extends Controller
         ]);
 
         $user = User::findOrFail($id);
+        $oldEmail = $user->email;
+        $newEmail = $request->email;
         
         // Role का name पाने के लिए
         $role = Role::find($request->role_id);
@@ -117,6 +127,18 @@ class UserVendorController extends Controller
             'locality' => $request->locality,
             'permissions' => $request->permissions ?? [],
         ]);
+
+        // If email was changed, send notification mail
+        if ($oldEmail !== $newEmail) {
+            try {
+                // Here we can use a generic mail or just notify about the update
+                Mail::raw("Your Beingpetz account email has been updated to $newEmail. If you didn't do this, please contact support.", function ($message) use ($newEmail) {
+                    $message->to($newEmail)->subject('Email Updated - Beingpetz');
+                });
+            } catch (\Exception $e) {
+                Log::error('Email update notification failed: ' . $e->getMessage());
+            }
+        }
 
         return redirect()->route('admin.uservendors.index')
             ->with('success', 'User/Vendor updated successfully.');
@@ -164,7 +186,7 @@ class UserVendorController extends Controller
 
     public function edit(string $id)
     {
-        $roles = Role::all();
+        $roles = Role::where('name', '!=', 'admin')->get();
         $user = User::whereIn('role', ['user', 'vendor'])->findOrFail($id);
         
         return view('admin.uservendors.edit', compact('user','roles'));

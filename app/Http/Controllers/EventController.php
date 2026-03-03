@@ -25,7 +25,7 @@ class EventController extends Controller
             'admin_id'    => 'required|integer|exists:users,id',
             'title'       => 'required|string|max:255',
             'description' => 'required',
-            'event_date'  => 'required|date',
+            'event_date'  => 'required|date|after_or_equal:today',
             'location'    => 'nullable|string|max:255',
             'image'       => 'nullable|image',
         ]);
@@ -178,7 +178,7 @@ class EventController extends Controller
         $request->validate([
             'title'         => 'required|string|max:255',
             'description'   => 'required|string',
-            'event_date'    => 'required|date',
+            'event_date'    => 'required|date|after_or_equal:today',
             'location'      => 'nullable|string|max:255',
             'category_id'   => 'nullable|exists:categories,id',
             'image'         => 'nullable|image|mimes:jpeg,png,jpg,webp,avif,gif|max:2048',
@@ -231,7 +231,20 @@ class EventController extends Controller
         $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'required|string',
-            'event_date' => 'required|date',
+            'event_date' => [
+                'required',
+                'date',
+                function ($attribute, $value, $fail) use ($event) {
+                    // Allow if the date hasn't changed (even if it's in the past)
+                    if ($value === $event->event_date) {
+                        return;
+                    }
+                    // If changed, must be today or future
+                    if (\Carbon\Carbon::parse($value)->isPast()) {
+                        $fail('The event date must be today or a future date.');
+                    }
+                },
+            ],
             'location' => 'required|string|max:255',
             'category_id' => 'nullable|exists:categories,id',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp,avif|max:2048',

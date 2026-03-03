@@ -15,4 +15,9 @@ class AdBanner extends Model
         'end_date',
         'section'
     ];
+
+    public function getImageAttribute($value)
+    {
+        return $value ? asset($value) : null;
+    }
 }

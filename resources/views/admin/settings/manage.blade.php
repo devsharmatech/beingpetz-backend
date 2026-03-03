@@ -4,6 +4,8 @@
 @section('title', $groupTitle)
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
+
 @section('content')
     <div class="container-fluid py-4">
         <div class="row">
@@ -48,6 +50,8 @@
                                                 placeholder="Leave blank to keep current password" value="">
                                         @elseif($setting->type === 'textarea')
                                             <textarea class="form-control" id="{{ $setting->key }}" name="{{ $setting->key }}" rows="4">{{ old($setting->key, $setting->value) }}</textarea>
+                                        @elseif($setting->type === 'richtext')
+                                            <textarea class="form-control summernote" id="{{ $setting->key }}" name="{{ $setting->key }}" rows="10">{{ old($setting->key, $setting->value) }}</textarea>
                                         @elseif($setting->type === 'boolean')
                                             <div class="form-check form-switch">
                                                 <input class="form-check-input" type="checkbox" id="{{ $setting->key }}"
@@ -92,4 +96,27 @@
             </div>
         </div>
     </div>
+@endsection
+
+@section('scripts')
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            $('.summernote').summernote({
+                height: 300,
+                toolbar: [
+                    ['style', ['style']],
+                    ['font', ['bold', 'underline', 'clear']],
+                    ['color', ['color']],
+                    ['para', ['ul', 'ol', 'paragraph']],
+                    ['table', ['table']],
+                    ['insert', ['link', 'picture', 'video']],
+                    ['view', ['fullscreen', 'codeview', 'help']]
+                ]
+            });
+        });
+    </script>
 @endsection

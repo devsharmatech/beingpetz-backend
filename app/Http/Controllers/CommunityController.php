@@ -550,10 +550,14 @@ public function index()
             'moderators.*' => 'exists:users,id'
         ]);
 
+        // Only update slug if name changed
+        if ($community->name !== $request->name) {
+            $community->slug = Str::slug($request->name) . '-' . Str::random(5);
+        }
+
         // Update community basic info
         $community->update([
             'name' => $request->name,
-            'slug' => Str::slug($request->name) . '-' . Str::random(5),
             'description' => $request->description,
             'type' => $request->type,
             'latitude' => $request->latitude,
@@ -563,32 +567,37 @@ public function index()
         $manager = new ImageManager(new Driver());
 
         // Handle profile image update with resizing
-        if ($request->hasFile('profile')) {
-            if ($community->profile && file_exists(public_path($community->profile))) {
-                unlink(public_path($community->profile));
-            }
-            
-            $file = $request->file('profile');
-            $filename = uniqid('profile_') . '.' . $file->getClientOriginalExtension();
-            $path = 'uploads/communities/' . $filename;
-
-            $manager->read($file)->resize(400, 400)->save(public_path($path));
-            $community->update(['profile' => $path]);
+    if ($request->hasFile('profile')) {
+        $oldProfile = $community->getRawOriginal('profile');
+        if ($oldProfile && file_exists(public_path($oldProfile))) {
+            unlink(public_path($oldProfile));
         }
 
-        // Handle cover image update with resizing
-        if ($request->hasFile('cover_image')) {
-            if ($community->cover_image && file_exists(public_path($community->cover_image))) {
-                unlink(public_path($community->cover_image));
-            }
-            
-            $file = $request->file('cover_image');
-            $filename = uniqid('cover_') . '.' . $file->getClientOriginalExtension();
-            $path = 'uploads/communities/' . $filename;
+        $file = $request->file('profile');
+        $filename = uniqid('profile_') . '.' . $file->getClientOriginalExtension();
+        $path = 'uploads/communities/' . $filename;
 
-            $manager->read($file)->resize(1200, 400)->save(public_path($path));
-            $community->update(['cover_image' => $path]);
+        $manager->read($file)->resize(400, 400)->save(public_path($path));
+        $community->profile = $path;
+    }
+
+    // Handle cover image update with resizing
+    if ($request->hasFile('cover_image')) {
+        $oldCover = $community->getRawOriginal('cover_image');
+        if ($oldCover && file_exists(public_path($oldCover))) {
+            unlink(public_path($oldCover));
         }
+
+        $file = $request->file('cover_image');
+        $filename = uniqid('cover_') . '.' . $file->getClientOriginalExtension();
+        $path = 'uploads/communities/' . $filename;
+
+        $manager->read($file)->resize(1200, 400)->save(public_path($path));
+        $community->cover_image = $path;
+    }
+
+    $community->save();
+
 
         // Handle members update
         $selectedMembers = $request->members ?? [];

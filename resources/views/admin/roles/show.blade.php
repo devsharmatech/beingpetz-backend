@@ -71,11 +71,11 @@
                                     </tr>
                                     <tr>
                                         <th>Created At:</th>
-                                        <td>{{ $role->created_at->format('d M Y, h:i A') }}</td>
+                                        <td>{{ $role->created_at ? $role->created_at->format('d M Y, h:i A') : 'N/A' }}</td>
                                     </tr>
                                     <tr>
                                         <th>Updated At:</th>
-                                        <td>{{ $role->updated_at->format('d M Y, h:i A') }}</td>
+                                        <td>{{ $role->updated_at ? $role->updated_at->format('d M Y, h:i A') : 'N/A' }}</td>
                                     </tr>
                                 </table>
                             </div>
@@ -149,7 +149,7 @@
                                                             <span class="badge bg-danger">Inactive</span>
                                                         @endif
                                                     </td>
-                                                    <td>{{ $user->created_at->format('d M Y') }}</td>
+                                                    <td>{{ $user->created_at ? $user->created_at->format('d M Y') : 'N/A' }}</td>
                                                 </tr>
                                             @endforeach
                                         </tbody>

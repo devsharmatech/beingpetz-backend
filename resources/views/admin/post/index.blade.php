@@ -432,6 +432,12 @@
         @endif
 
         $(document).ready(function() {
+            // Route definitions
+            const galleryRoute = "{{ route('admin.post.gallery', ':id') }}";
+            const toggleStatusRoute = "{{ route('admin.posts.toggleStatus', ':id') }}";
+            const deleteImageRoute = "{{ route('admin.media.image.delete', ':id') }}";
+            const deleteVideoRoute = "{{ route('admin.media.video.delete', ':id') }}";
+
             // Initialize DataTable
             $('.datatable').DataTable({
                 responsive: true,
@@ -494,7 +500,8 @@
                 }
 
                 // Send request to server
-                fetch(`/petz-info/public/admin/posts/toggle-status/${postId}`, {
+                const url = toggleStatusRoute.replace(':id', postId);
+                fetch(url, {
                         method: 'POST',
                         headers: {
                             'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -579,8 +586,9 @@
                 `);
 
                 // Load gallery content via AJAX
+                const url = galleryRoute.replace(':id', postId);
                 $.ajax({
-                    url: `/petz-info/public/admin/posts/${postId}/gallery`,
+                    url: url,
                     method: 'GET',
                     success: function(data) {
                         $('#gallery-content').html(data);
@@ -633,8 +641,8 @@
 
                         // Determine the correct URL based on media type
                         const deleteUrl = mediaType === 'image' ?
-                            `/petz-info/public/admin/media/image/${mediaId}` :
-                            `/petz-info/public/admin/media/video/${mediaId}`;
+                            deleteImageRoute.replace(':id', mediaId) :
+                            deleteVideoRoute.replace(':id', mediaId);
 
                         // Send delete request
                         $.ajax({

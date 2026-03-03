@@ -60,4 +60,14 @@ class Banner extends Model
 
         return true;
     }
+
+    public function getMobileImageAttribute($value)
+    {
+        return $value ? asset($value) : null;
+    }
+
+    public function getDesktopImageAttribute($value)
+    {
+        return $value ? asset($value) : null;
+    }
 }

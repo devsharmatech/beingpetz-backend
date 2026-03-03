@@ -330,7 +330,8 @@
                                             <label for="event_date" class="form-label required">Event Date</label>
                                             <input type="date"
                                                 class="form-control @error('event_date') is-invalid @enderror"
-                                                id="event_date" name="event_date" value="{{ old('event_date') }}">
+                                                id="event_date" name="event_date" value="{{ old('event_date') }}"
+                                                min="{{ date('Y-m-d') }}">
                                             @error('event_date')
                                                 <div class="error-message">{{ $message }}</div>
                                             @enderror

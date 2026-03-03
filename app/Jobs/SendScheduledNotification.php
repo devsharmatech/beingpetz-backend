@@ -37,27 +37,23 @@ class SendScheduledNotification implements ShouldQueue
             $audienceType = $this->notification->audience['type'] ?? 'single';
             Log::info('Audience type:', ['type' => $audienceType]);
 
-            if ($audienceType === 'all') {
-                $receivers = User::whereNotNull('device_token')->pluck('device_token')->toArray();
-                Log::info('All users receivers:', ['count' => count($receivers)]);
+            $query = User::query()->whereNotNull('device_token');
 
+            if ($audienceType === 'all') {
+                // All users
             } elseif ($audienceType === 'custom') {
                 $locations = $this->notification->audience['locations'] ?? [];
-                Log::info('Custom audience locations:', ['locations' => $locations]);
-                
-                $receivers = User::whereIn('location', $locations)
-                    ->whereNotNull('device_token')
-                    ->pluck('device_token')
-                    ->toArray();
-                Log::info('Custom receivers:', ['count' => count($receivers)]);
+                if (!empty($locations)) {
+                    $query->whereIn('location', $locations);
+                }
             } else {
                 // Single receiver
-                $receiver = User::find($this->notification->user_id);
-                $receivers = $receiver && $receiver->device_token ? [$receiver->device_token] : [];
-                Log::info('Single receiver:', ['token' => $receivers[0] ?? 'None']);
+                $query->where('id', $this->notification->user_id);
             }
 
-            if (empty($receivers)) {
+            $users = $query->get();
+            
+            if ($users->isEmpty()) {
                 Log::warning('No receivers found for notification');
                 $this->notification->update([
                     'is_sent' => true,
@@ -66,34 +62,38 @@ class SendScheduledNotification implements ShouldQueue
                 return;
             }
 
+            $projectId = config('services.firebase.project_id');
+            $credentialsPath = public_path(config('services.firebase.credentials_path'));
+            $fcm = new \App\Services\FirebaseService($projectId, $credentialsPath);
+
             $successCount = 0;
             $failedCount = 0;
 
-            foreach ($receivers as $deviceToken) {
-                $result = $this->sendFCMNotification(
-                    $deviceToken,
-                    $this->notification->title,
-                    $this->notification->message,
+            foreach ($users as $user) {
+                $result = $fcm->sendNotification(
+                    [$user->device_token],
                     [
-                        'sender_id'     => (string) $this->notification->sender_id,
-                        'type'          => $this->notification->type,
-                        'notifiable_id' => (string) $this->notification->notifiable_id,
+                        'title'          => $this->notification->title,
+                        'body'           => $this->notification->message,
+                        'sender_id'      => (string) $this->notification->sender_id,
+                        'type'           => $this->notification->type,
+                        'notification_id'=> (string) $this->notification->id,
+                        'image'          => $this->notification->image ? asset('storage/' . $this->notification->image) : null,
                     ]
                 );
                 
-                if ($result) {
+                if ($result === true) {
                     $successCount++;
-                    Log::info('FCM sent successfully to:', ['token' => substr($deviceToken, 0, 10) . '...']);
                 } else {
                     $failedCount++;
-                    Log::error('FCM failed for token:', ['token' => substr($deviceToken, 0, 10) . '...']);
+                    Log::error('FCM failed for token:', ['error' => $result]);
                 }
             }
 
             Log::info('FCM Summary:', [
                 'success' => $successCount,
                 'failed' => $failedCount,
-                'total' => count($receivers)
+                'total' => $users->count()
             ]);
 
             // Update notification status
@@ -103,36 +103,12 @@ class SendScheduledNotification implements ShouldQueue
                 'sent_at' => now(),
             ]);
 
-            Log::info('Notification processing completed');
-
         } catch (\Exception $e) {
             Log::error('Scheduled notification job failed: ' . $e->getMessage());
-            Log::error('Stack trace:', ['trace' => $e->getTraceAsString()]);
-
             $this->notification->update([
                 'status'  => false,
                 'is_sent' => false,
             ]);
         }
-    }
-
-    private function sendFCMNotification($deviceToken, $title, $body, $data = [])
-    {
-        $serverKey = env('FIREBASE_SERVER_KEY');
-
-        $response = Http::withHeaders([
-            'Authorization' => 'key=' . $serverKey,
-            'Content-Type'  => 'application/json',
-        ])->post('https://fcm.googleapis.com/fcm/send', [
-            'to'           => $deviceToken,
-            'notification' => [
-                'title' => $title,
-                'body'  => $body,
-                'sound' => 'default',
-            ],
-            'data' => $data,
-        ]);
-
-        return $response->successful();
     }
 }

@@ -334,7 +334,8 @@
                                             <input type="date"
                                                 class="form-control @error('event_date') is-invalid @enderror"
                                                 id="event_date" name="event_date"
-                                                value="{{ old('event_date', $event->event_date) }}">
+                                                value="{{ old('event_date', $event->event_date) }}"
+                                                min="{{ \Carbon\Carbon::parse($event->event_date)->isPast() ? $event->event_date : date('Y-m-d') }}">
                                             @error('event_date')
                                                 <div class="error-message">{{ $message }}</div>
                                             @enderror

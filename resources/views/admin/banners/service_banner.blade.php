@@ -231,8 +231,7 @@
                             @error('image')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
-                            <small class="text-muted">Required size: 735x691px (Images will be resized
-                                automatically)</small>
+                            <small class="text-muted">Max size: 2MB</small>
 
                             <!-- Image Preview -->
                             <div id="imagePreview" class="mt-2" style="display: none;">

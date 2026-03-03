@@ -63,10 +63,13 @@ class SettingController extends Controller
             }
 
             $setting->update(['value' => $value]);
+            // Clear specific cache for this setting
+            Cache::forget('setting_' . $setting->key);
         }
 
-        // Clear settings cache
+        // Clear general settings cache
         Cache::forget('settings');
+        Cache::forget('all_settings');
 
         return redirect()->route('admin.settings.index')
             ->with('success', ucfirst($group) . ' settings updated successfully!');
