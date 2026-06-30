@@ -11,6 +11,7 @@ class CommunityMembership extends Model
         'community_id',
         'parent_id',
         'role',
+        'status',
     ];
 
     public function community()

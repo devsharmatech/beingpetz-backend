@@ -6,15 +6,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Schema; // Add this line
-use Illuminate\Support\Facades\DB; 
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
+use Laravel\Sanctum\HasApiTokens;
 
 
 
 class User extends Authenticatable
 {
    
-     use HasFactory, Notifiable;
+     use HasApiTokens, HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -22,12 +23,16 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
+        'user_id',
         'first_name',
         'last_name',
+        'username',
         'email',
         'phone',
+        'country_code',
         'password',
         'otp',
+        'otp_expires_at',
         'isComplete',
         'city',
         'state',
@@ -63,10 +68,18 @@ class User extends Authenticatable
             'last_active_at' => 'datetime',
             'password' => 'hashed',
             'custom_permissions' => 'array',
-            'isComplete' => 'boolean'
+            'isComplete' => 'boolean',
+            'otp_expires_at' => 'datetime'
         ];
     }
+    public function getProfileUrlAttribute()
+    {
+        if (!$this->profile) return null;
+        if (filter_var($this->profile, FILTER_VALIDATE_URL)) return $this->profile;
+        return asset($this->profile);
+    }
 
+    protected $appends = ['profile_url'];
     public function pets()
     {
         // Try different possible foreign keys

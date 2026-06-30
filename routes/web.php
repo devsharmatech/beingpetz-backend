@@ -6,8 +6,6 @@ use App\Http\Controllers\PetController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\CommunityController;
 
-
-
 Route::controller(PostController::class)->group(function(){
     Route::get('birthday-wish','createPetBirthdayPosts');
 });

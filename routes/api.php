@@ -50,6 +50,7 @@ Route::controller(AuthApiController::class)->prefix('v1/auth/')->group(function(
     Route::post('delete-profile','deleteAccount');
     Route::post('forget-password','forgetPassword');
     Route::post('change-password','changePassword');
+    
 });
 
 Route::controller(PetController::class)->prefix('v1/pet/')->group(function(){
@@ -59,6 +60,7 @@ Route::controller(PetController::class)->prefix('v1/pet/')->group(function(){
     Route::post('get/my','getMyPets');
     Route::post('detail','getDetailPet');
     Route::post('phone/show-hide','togglePhoneVisibility');
+    Route::post('name/show-hide','toggleNameVisibility');
 });
 
 Route::controller(ReportController::class)->prefix('v1/report/')->group(function(){
@@ -96,6 +98,8 @@ Route::controller(PostController::class)->prefix('v1/post/')->group(function(){
     Route::post('/share','share');
     Route::post('/comment','comment');
     Route::post('/get-comment','getComment');
+    
+    Route::post('/get-post-details','getPostDetails');
 });
 Route::controller(PostController::class)->prefix('v1/')->group(function(){
     Route::post('search','search');
@@ -108,6 +112,7 @@ Route::controller(FriendRequestController::class)->prefix('v1/pet/friends/')->gr
    Route::post('/respond-request','respondRequest');
    Route::post('/suggestions','friendSuggestions');
    Route::post('/search-user','searchUsers');
+   Route::post('/get-all-users','getAllUsers');
 });
 
 Route::controller(CommunityController::class)->prefix('v1/pet/community/')->group(function(){
@@ -123,6 +128,15 @@ Route::controller(CommunityController::class)->prefix('v1/pet/community/')->grou
    
    Route::post('add-role', 'addModeratorOrAdmin');
     Route::post('remove-role', 'removeModeratorOrAdmin');
+    
+    
+   Route::post('/create2','createCommunityWithMembers');
+   Route::post('/remove-member','removeCommunityMember');
+   Route::post('/make-admin','makeAdminCommunity');
+   Route::post('/add-member-by-admin','addCommunityMember');
+   Route::post('/pending-requests','pendingCommunityMemberRequest');
+   Route::post('/approve-join','approveCommunityMemberRequest');
+   Route::post('/reject-join','rejectCommunityMemberRequest');
 });
 Route::controller(FavoriteController::class)->prefix('v1/favorite/')->group(function(){
   Route::post('/behaviourist','togglePetBehaviouristFavorite');
@@ -146,6 +160,7 @@ Route::controller(LostFoundReportController::class)->prefix('v1/pet/lost-found/'
 
 Route::controller(AdoptionListingController::class)->prefix('v1/pet/')->group(function(){
    Route::post('/create-adoption','create');
+   Route::post('/edit-adoption','editAdoption');
    Route::post('/my-adoptions', 'myListings');
    Route::post('/all-adoptions','allListings');
    Route::post('/delete-adoption','delete');

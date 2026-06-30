@@ -18,6 +18,11 @@ class BlogController extends Controller
         $blogs = Blog::with('admin')->latest()->paginate(3);
         return response()->json(['status'=>true,'blogs'=>$blogs]);
     }
+   public function allBlogsAPI()
+    {
+        $blogs = Blog::with('admin')->latest()->paginate(10);
+        return response()->json(['success'=>true,'message'=>"Fetched successfully",'blogs'=>$blogs]);
+    }
 
     public function store(Request $request)
     {

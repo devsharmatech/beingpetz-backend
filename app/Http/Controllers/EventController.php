@@ -18,6 +18,15 @@ class EventController extends Controller
             'data'   => $events
         ]);
     }
+    public function getAllEvents()
+    {
+        $events = Event::with('admin')->latest()->paginate(10);
+        return response()->json([
+            'success' => true,
+            'message'=>"Event fetched successfully",
+            'data'   => $events
+        ]);
+    }
 
     public function store(Request $request)
     {

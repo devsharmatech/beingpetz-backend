@@ -33,7 +33,7 @@
                             return false;
                         }
 
-                        // अगर user admin है तो सब allow
+                        
                         if ($user->role_id) {
                             $role = \App\Models\Role::find($user->role_id);
 
@@ -42,7 +42,7 @@
                             }
                         }
 
-                        // User के custom permissions
+                        
                         $permissions = $role->default_permissions ?? [];
 
                         if (is_string($permissions)) {
@@ -53,7 +53,7 @@
                             return in_array($permission, $permissions) || in_array('*', $permissions);
                         }
 
-                        // Role के default_permissions (roles टेबल से)
+                       
                         if ($user->role_id) {
                             $role = \App\Models\Role::find($user->role_id);
 
@@ -68,7 +68,7 @@
                             }
                         }
 
-                        // अगर कुछ नहीं मिला तो false
+                       
                         return false;
                     }
                 @endphp
@@ -144,6 +144,86 @@
                             class="waves-effect {{ request()->routeIs('admin.uservendors.*') ? 'active-link' : '' }}">
                             <i class="fas fa-user-friends"></i>
                             <span>Users & Vendors</span>
+                        </a>
+                    </li>
+                @endif
+                <!-- Product Category -->
+                @if (checkPermission('product-category', $user))
+                    <li class="{{ request()->routeIs('admin-page.categories.page') ? 'mm-active' : '' }}">
+                        <a href="{{ route('admin-page.categories.page') }}"
+                            class="waves-effect {{ request()->routeIs('admin-page.categories.page') ? 'active-link' : '' }}">
+                            <i class="fas fa-box"></i>
+                            <span>Product Category</span>
+                        </a>
+                    </li>
+                @endif
+                <!-- Company Page -->
+                @if (checkPermission('companies-page', $user))
+                    <li class="{{ request()->routeIs('admin-page.companies.page') ? 'mm-active' : '' }}">
+                        <a href="{{ route('admin-page.companies.page') }}"
+                            class="waves-effect {{ request()->routeIs('admin-page.companies.page') ? 'active-link' : '' }}">
+                            <i class="fas fa-box"></i>
+                            <span>Company Manager</span>
+                        </a>
+                    </li>
+                @endif
+                <!-- Attributes -->
+                @if (checkPermission('attributes-page', $user))
+                    <li class="{{ request()->routeIs('admin-page.attributes.page') ? 'mm-active' : '' }}">
+                        <a href="{{ route('admin-page.attributes.page') }}"
+                            class="waves-effect {{ request()->routeIs('admin-page.attributes.page') ? 'active-link' : '' }}">
+                            <i class="fas fa-box"></i>
+                            <span>Product Attributes</span>
+                        </a>
+                    </li>
+                @endif
+                <!-- Products -->
+                @if (checkPermission('products-page', $user))
+                    <li class="{{ request()->routeIs('admin-page.products.page') ? 'mm-active' : '' }}">
+                        <a href="{{ route('admin-page.products.page') }}"
+                            class="waves-effect {{ request()->routeIs('admin-page.products.page') ? 'active-link' : '' }}">
+                            <i class="fas fa-box"></i>
+                            <span>Products</span>
+                        </a>
+                    </li>
+                @endif
+                <!-- Products -->
+                @if (checkPermission('products-order', $user))
+                    <li class="{{ request()->routeIs('admin-page.orders.page') ? 'mm-active' : '' }}">
+                        <a href="{{ route('admin-page.orders.page') }}"
+                            class="waves-effect {{ request()->routeIs('admin-page.orders.page') ? 'active-link' : '' }}">
+                            <i class="fas fa-box"></i>
+                            <span>Orders</span>
+                        </a>
+                    </li>
+                @endif
+                <!-- Market Place Banner -->
+                @if (checkPermission('banners-page', $user))
+                    <li class="{{ request()->routeIs('admin-page.banners.page') ? 'mm-active' : '' }}">
+                        <a href="{{ route('admin-page.banners.page') }}"
+                            class="waves-effect {{ request()->routeIs('admin-page.banners.page') ? 'active-link' : '' }}">
+                            <i class="fas fa-box"></i>
+                            <span>Marketplace Banners</span>
+                        </a>
+                    </li>
+                @endif
+                <!-- Contest Page -->
+                @if (checkPermission('contests-page', $user))
+                    <li class="{{ request()->routeIs('admin-page.contests.page') ? 'mm-active' : '' }}">
+                        <a href="{{ route('admin-page.contests.page') }}"
+                            class="waves-effect {{ request()->routeIs('admin-page.contests.page') ? 'active-link' : '' }}">
+                            <i class="fas fa-box"></i>
+                            <span>Contests</span>
+                        </a>
+                    </li>
+                @endif
+                <!-- Contest Entry -->
+                @if (checkPermission('entries-page', $user))
+                    <li class="{{ request()->routeIs('admin-page.entries.page') ? 'mm-active' : '' }}">
+                        <a href="{{ route('admin-page.entries.page') }}"
+                            class="waves-effect {{ request()->routeIs('admin-page.entries.page') ? 'active-link' : '' }}">
+                            <i class="fas fa-box"></i>
+                            <span>Contest Entries</span>
                         </a>
                     </li>
                 @endif

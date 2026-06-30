@@ -516,4 +516,73 @@ public function store(Request $request)
             'message' => 'Report deleted successfully',
         ]);
     }
+    
+    public function markLostFoundReportResolved(Request $request)
+{
+    try {
+
+        $validator = Validator::make($request->all(), [
+            'report_id' => 'required|exists:lost_found_reports,id',
+        ]);
+
+        if ($validator->fails()) {
+
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+            ], 422);
+        }
+
+        $user = $request->user();
+
+        // 🔥 Verify owner
+        $report = LostFoundReport::where('id', $request->report_id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$report) {
+
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to update this report.',
+            ], 403);
+        }
+
+        // 🔥 Toggle status
+        if ($report->status === 'resolved') {
+
+            $report->status = 'open';
+            $report->lost_found_at = null;
+
+            $message = ucfirst($report->report_type) . ' report marked as open.';
+        } else {
+
+            $report->status = 'resolved';
+            $report->lost_found_at = now();
+
+            $message = ucfirst($report->report_type) . ' report marked as resolved successfully.';
+        }
+
+        $report->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'data' => [
+                'id' => $report->id,
+                'report_type' => $report->report_type,
+                'status' => $report->status,
+                'lost_found_at' => $report->lost_found_at,
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to update report status.',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+ }
 }

@@ -168,7 +168,8 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @forelse($banners as $banner)
+                                    @forelse ($banners as $banner)
+                                        
                                         @php
                                             $status = $banner->is_currently_active
                                                 ? 'active'

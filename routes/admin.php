@@ -25,6 +25,124 @@ use App\Http\Controllers\admin\UserVendorController;
 use App\Http\Controllers\admin\RoleController;
 use App\Http\Controllers\admin\PermissionController;
 use App\Http\Controllers\admin\LegalController;
+use App\Http\Controllers\V2Admin\CategoryController as ProductCategoryController;
+use App\Http\Controllers\V2Admin\CompanyController;
+use App\Http\Controllers\V2Admin\ProductController;
+use App\Http\Controllers\V2Admin\AttributeController;
+use App\Http\Controllers\V2Admin\AttributeValueController;
+use App\Http\Controllers\V2Admin\MarketplaceBannerController;
+use App\Http\Controllers\V2Admin\ProductVariantController;
+use App\Http\Controllers\V2Admin\ContestController;
+use App\Http\Controllers\V2Admin\ContestEntryController;
+use App\Http\Controllers\V2Admin\OrderController;
+
+
+Route::prefix('admin-api')->name('admin.api.')->group(function () {
+
+    Route::get('/contests', [ContestController::class,'index'])->name('contests.index');
+    Route::post('/contests', [ContestController::class,'store'])->name('contests.store');
+    Route::get('/contests/{id}', [ContestController::class,'show'])->name('contests.show');
+    Route::post('/contests/{id}', [ContestController::class,'update'])->name('contests.update');
+    Route::delete('/contests/{id}', [ContestController::class,'destroy'])->name('contests.delete');
+    
+    
+      Route::get('/contest-entries', [ContestEntryController::class,'index'])->name('entries.index');
+    Route::post('/contest-entries/status/{id}', [ContestEntryController::class,'updateStatus'])->name('entries.status');
+    Route::post('/contest-entries/winner/{id}', [ContestEntryController::class,'markWinner'])->name('entries.winner');
+    Route::delete('/contest-entries/{id}', [ContestEntryController::class,'destroy'])->name('entries.delete');
+    
+     Route::get('/orders', [OrderController::class,'index'])->name('orders.index');
+    Route::get('/orders/{id}', [OrderController::class,'show'])->name('orders.show');
+
+    Route::post('/orders/status/{id}', [OrderController::class,'updateStatus'])->name('orders.status');
+    Route::post('/orders/payment/{id}', [OrderController::class,'updatePayment'])->name('orders.payment');
+
+});
+
+Route::prefix('admin-api')->name('admin.api.')->group(function () {
+    
+    // Products
+    Route::get('/products/form-data', [ProductController::class, 'formData'])->name('products.form-data');
+    Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+    Route::post('/products', [ProductController::class, 'store'])->name('products.store');
+    Route::get('/products/{id}', [ProductController::class, 'show'])->name('products.show');
+    Route::put('/products/{id}', [ProductController::class, 'update'])->name('products.update');
+    Route::delete('/products/{id}', [ProductController::class, 'destroy'])->name('products.delete');
+    // Product Images
+    Route::post('/products/{id}/set-primary-image', [ProductController::class, 'setPrimaryImage'])->name('products.set-primary-image');
+    Route::delete('/product-images/{id}', [ProductController::class, 'deleteGalleryImage'])->name('products.delete-image');
+    // Product Variants
+    Route::post('/variants', [ProductVariantController::class, 'store'])->name('variants.store');
+    Route::put('/variants/{id}', [ProductVariantController::class, 'update'])->name('variants.update');
+    Route::delete('/variants/{id}', [ProductVariantController::class, 'destroy'])->name('variants.delete');
+    
+});
+
+Route::prefix('admin-api')->name('admin.api.')->group(function () {
+
+    Route::get('/banners', [MarketplaceBannerController::class, 'index'])->name('banners.index');
+    Route::post('/banners', [MarketplaceBannerController::class, 'store'])->name('banners.store');
+    Route::get('/banners/{id}', [MarketplaceBannerController::class, 'show'])->name('banners.show');
+    Route::put('/banners/{id}', [MarketplaceBannerController::class, 'update'])->name('banners.update');
+    Route::delete('/banners/{id}', [MarketplaceBannerController::class, 'destroy'])->name('banners.delete');
+
+});
+
+Route::prefix('admin-api')->name('admin.api.')->group(function () {
+
+    // ATTRIBUTES
+    Route::get('/attributes', [AttributeController::class, 'index'])->name('attributes.index');
+    Route::post('/attributes', [AttributeController::class, 'store'])->name('attributes.store');
+    Route::get('/attributes/{id}', [AttributeController::class, 'show'])->name('attributes.show');
+    Route::put('/attributes/{id}', [AttributeController::class, 'update'])->name('attributes.update');
+    Route::delete('/attributes/{id}', [AttributeController::class, 'destroy'])->name('attributes.delete');
+
+    // ATTRIBUTE VALUES
+    Route::post('/attribute-values', [AttributeValueController::class, 'store'])->name('attribute.values.store');
+    Route::delete('/attribute-values/{id}', [AttributeValueController::class, 'destroy'])->name('attribute.values.delete');
+
+});
+
+Route::prefix('admin-api')->name('admin.api.')->group(function () {
+
+    // CATEGORY
+    Route::get('/categories', [ProductCategoryController::class, 'index'])->name('categories.index');
+    Route::get('/categories/{id}', [ProductCategoryController::class, 'show'])->name('categories.show');
+    Route::post('/categories', [ProductCategoryController::class, 'store'])->name('categories.store');
+    Route::put('/categories/update/{id}', [ProductCategoryController::class, 'update'])->name('categories.update');
+    Route::delete('/categories/{id}', [ProductCategoryController::class, 'destroy'])->name('categories.delete');
+
+    // COMPANY
+    Route::get('/companies', [CompanyController::class, 'index'])->name('companies.index');
+    Route::get('/companies/{id}', [CompanyController::class, 'show'])->name('companies.show');
+    Route::post('/companies', [CompanyController::class, 'store'])->name('companies.store');
+    Route::put('/companies/update/{id}', [CompanyController::class, 'update'])->name('companies.update');
+    Route::delete('/companies/{id}', [CompanyController::class, 'destroy'])->name('companies.delete');
+
+    // PRODUCT
+    Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+    Route::get('/products/{id}', [ProductController::class, 'show'])->name('products.show');
+    Route::post('/products', [ProductController::class, 'store'])->name('products.store');
+    Route::put('/products/update/{id}', [ProductController::class, 'update'])->name('products.update');
+    Route::delete('/products/{id}', [ProductController::class, 'destroy'])->name('products.delete');
+
+});
+Route::prefix('admin')->name('admin-page.')->group(function () {
+
+    Route::view('/categories', 'admin.product-category.index')->name('categories.page');
+    Route::view('/companies', 'admin.company.index')->name('companies.page');
+    Route::view('/products', 'admin.products.index')->name('products.page');
+    Route::view('/attributes', 'admin.attributes.index')->name('attributes.page');
+    Route::view('/banners', 'admin.marketplace-banners.index')->name('banners.page');
+    Route::view('/products', 'admin.products.index')->name('products.page');
+    Route::view('/contests', 'admin.contests.index')->name('contests.page');
+    Route::view('/contest-entries', 'admin.contest-entries.index')->name('entries.page');
+    
+    Route::view('/orders', 'admin.orders.index')->name('orders.page');
+
+    Route::get('/orders/print/{id}', [OrderController::class,'print'])->name('orders.print');
+    Route::get('/orders/pdf/{id}', [OrderController::class,'pdf'])->name('orders.pdf');
+});
 
 
 Route::name('admin.')->group(function () {

@@ -271,6 +271,29 @@ class PetController extends Controller
     ]);
    }
    
+    public function toggleNameVisibility(Request $request)
+    {
+    $validator = Validator::make($request->all(), [
+        'user_id' => 'required|exists:users,id',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'status' => false,
+            'message' => $validator->errors()->first(),
+        ], 422);
+    }
+
+    $user = User::find($request->user_id);
+    $user->isNameShow = $user->isNameShow ? 0 : 1;
+    $user->save();
+    
+    return response()->json([
+        'status' => true,
+        'message' => 'Name visibility has been ' . ($user->isNameShow ? 'enabled' : 'disabled') . '.',
+    ]);
+   }
+   
     public function showParentInfo($unid){
         $pet=Pet::where('unid',$unid)->first();
         

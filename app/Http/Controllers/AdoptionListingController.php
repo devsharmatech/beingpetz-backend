@@ -230,6 +230,148 @@ public function create(Request $request)
     ], 201);
 }
 
+public function editAdoption(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'user_id' => 'required|exists:users,id',
+        'listing_id' => 'required|exists:adoption_listings,id',
+        'pet_name' => 'required|string|max:255',
+        'pet_type' => 'required|string|max:255',
+        'breed' => 'nullable|string',
+        'gender' => 'required|in:male,female',
+        'dob' => 'nullable|date',
+        'description' => 'nullable|string',
+        'about_pet' => 'nullable|string',
+        'is_healthy' => 'nullable|boolean',
+        'is_dewormed' => 'nullable|boolean',
+        'is_neutered' => 'nullable|boolean',
+        'vaccination_done' => 'nullable|boolean',
+        'location' => 'nullable|string',
+        'latitude' => 'nullable|string',
+        'longitude' => 'nullable|string',
+        'contact_phone' => 'nullable|string',
+        'contact_email' => 'nullable|email',
+        'featured_image' => 'nullable|image',
+        'gallery_images.*' => 'nullable|image',
+        'delete_gallery_images' => 'nullable|array',
+        'delete_gallery_images.*' => 'exists:adoption_listing_images,id',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'status' => false,
+            'message' => $validator->errors()->first()
+        ], 200);
+    }
+
+    DB::beginTransaction();
+
+    try {
+
+        $listing = AdoptionListing::where('id', $request->listing_id)
+            ->where('user_id', $request->user_id)
+            ->first();
+
+        if (!$listing) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Listing not found.'
+            ], 404);
+        }
+
+        $listing->pet_name = $request->pet_name;
+        $listing->pet_type = $request->pet_type;
+        $listing->breed = $request->breed;
+        $listing->gender = $request->gender;
+        $listing->dob = $request->dob;
+        $listing->description = $request->description;
+        $listing->about_pet = $request->about_pet;
+        $listing->is_healthy = $request->is_healthy ?? 0;
+        $listing->is_dewormed = $request->is_dewormed ?? 0;
+        $listing->is_neutered = $request->is_neutered ?? 0;
+        $listing->vaccination_done = $request->vaccination_done ?? 0;
+        $listing->location = $request->location;
+        $listing->latitude = $request->latitude;
+        $listing->longitude = $request->longitude;
+        $listing->contact_phone = $request->contact_phone;
+        $listing->contact_email = $request->contact_email;
+
+        $manager = new ImageManager(new Driver());
+
+        // Replace Featured Image
+        if ($request->hasFile('featured_image')) {
+
+            if ($listing->featured_image && file_exists(public_path($listing->featured_image))) {
+                unlink(public_path($listing->featured_image));
+            }
+
+            $file = $request->file('featured_image');
+            $image = $manager->read($file);
+
+            $filename = uniqid('adopt_featured_') . '.' . $file->getClientOriginalExtension();
+            $path = 'uploads/adoptions/' . $filename;
+
+            $image->save(public_path($path), 100);
+
+            $listing->featured_image = $path;
+        }
+
+        $listing->save();
+
+        // Delete Selected Gallery Images
+        if ($request->filled('delete_gallery_images')) {
+
+            $images = AdoptionListingImage::where('listing_id', $listing->id)
+                ->whereIn('id', $request->delete_gallery_images)
+                ->get();
+
+            foreach ($images as $image) {
+
+                if ($image->image_path && file_exists(public_path($image->image_path))) {
+                    unlink(public_path($image->image_path));
+                }
+
+                $image->delete();
+            }
+        }
+
+        // Upload New Gallery Images
+        if ($request->hasFile('gallery_images')) {
+
+            $order = AdoptionListingImage::where('listing_id', $listing->id)->count();
+
+            foreach ($request->file('gallery_images') as $file) {
+
+                $filename = uniqid('adopt_gallery_') . '.' . $file->getClientOriginalExtension();
+
+                $file->move(public_path('uploads/adoptions/gallery'), $filename);
+
+                AdoptionListingImage::create([
+                    'listing_id' => $listing->id,
+                    'image_path' => 'uploads/adoptions/gallery/' . $filename,
+                    'display_order' => $order++,
+                ]);
+            }
+        }
+
+        DB::commit();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Adoption Listing Updated Successfully!',
+            'data' => $listing->load('galleryImages')
+        ]);
+
+    } catch (\Exception $e) {
+
+        DB::rollBack();
+
+        return response()->json([
+            'status' => false,
+            'message' => $e->getMessage(),
+        ], 500);
+    }
+}
 
     public function myListings(Request $request)
     {
@@ -294,4 +436,72 @@ public function create(Request $request)
 
         return response()->json(['status' => true, 'message' => 'Listing deleted successfully!']);
     }
+    
+    public function markAsAdopted(Request $request)
+{
+    try {
+
+        $validator = Validator::make($request->all(), [
+            'listing_id' => 'required|exists:adoption_listings,id',
+        ]);
+
+        if ($validator->fails()) {
+
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+            ], 422);
+        }
+
+        $user = $request->user();
+       
+        // 🔥 Verify listing belongs to logged-in user
+        $listing = AdoptionListing::where('id', $request->listing_id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$listing) {
+
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to update this listing.',
+            ], 403);
+        }
+
+        // 🔥 Toggle status
+        if ($listing->status === 'adopted') {
+
+            $listing->status = 'active';
+            $listing->adopted_at = null;
+
+            $message = 'Pet marked as available for adoption.';
+        } else {
+
+            $listing->status = 'adopted';
+            $listing->adopted_at = now();
+
+            $message = 'Pet marked as adopted successfully.';
+        }
+
+        $listing->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'data' => [
+                'id' => $listing->id,
+                'status' => $listing->status,
+                'adopted_at' => $listing->adopted_at,
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to update adoption status.',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+ }
 }

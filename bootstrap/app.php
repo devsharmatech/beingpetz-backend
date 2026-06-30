@@ -25,6 +25,11 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::middleware(['web'])
                 ->prefix('admin')
                 ->group(base_path('routes/admin.php'));
+                
+            // V2 API Routes
+            Route::middleware(['api'])
+                ->prefix('api')
+                ->group(base_path('routes/api_v2.php'));
         }
     )
 
@@ -34,6 +39,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\EnsureIsAdmin::class,
             'check.permission' => CheckPermission::class,
             'last_active' => \App\Http\Middleware\UpdateLastActiveMiddleware::class,
+            'v2.moderation' => \App\Http\Middleware\V2\ContentModerationMiddleware::class,
         ]);
         $middleware->appendToGroup('api', [
             \App\Http\Middleware\UpdateLastActiveMiddleware::class,

@@ -16,7 +16,7 @@ class CommunityMessage extends Model
     }
     public function old_message()
     {
-        return $this->belongsTo(CommunityManager::class,'message_id');
+        return $this->belongsTo(CommunityMessage::class,'message_id');
     }
     public function poll()
     {

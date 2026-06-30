@@ -22,6 +22,20 @@ class Post extends Model
         'forward_to_user_id',
         'deleted_at'
     ];
+    protected $casts = [
+    'target_locations' => 'array',
+    'target_pet_types' => 'array',
+    'target_breeds' => 'array',
+];
+public function hashtags()
+{
+    return $this->belongsToMany(
+        Hashtag::class,
+        'post_hashtags',
+        'post_id',
+        'hashtag_id'
+    )->withTimestamps();
+}
     public function images()
     {
         return $this->hasMany(PostImage::class,'post_id');

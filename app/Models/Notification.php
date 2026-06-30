@@ -23,6 +23,7 @@ class Notification extends Model
         'scheduled_at',
         'is_sent',
         'status',
+        'isActionDone'
     ];
 
     protected $casts = [

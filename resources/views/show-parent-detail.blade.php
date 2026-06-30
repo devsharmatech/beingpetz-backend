@@ -161,9 +161,20 @@
                 <div class="card h-100">
                     <div class="card-body">
                         <div class="d-flex align-items-center mb-4">
+                             @if($parentInfo->isNameShow)
                             <img src="{{ asset($parentInfo->profile) }}" alt="{{ $parentInfo->first_name }}" class="user-profile me-3" onerror="this.src='https://via.placeholder.com/100'">
+                             @else
+                                    
+                            <img src="https://placehold.co/100?text=Locked" alt="Locked" class="user-profile me-3" onerror="this.src='https://via.placeholder.com/100'">
+                                 
+                                 @endif
                             <div>
-                                <h3 class="mb-0">{{ $parentInfo->first_name }} {{ $parentInfo->last_name }}</h3>
+                                 @if($parentInfo->isNameShow)
+                                    <h3 class="mb-0">{{ $parentInfo->first_name }} {{ $parentInfo->last_name }}</h3>
+                                 @else
+                                    <h3 class="mb-0">Name is locked.</h3>
+                                 
+                                 @endif
                                 <p class="text-muted mb-0">{{ $pet->name }}'s Parent</p>
                             </div>
                         </div>
@@ -171,15 +182,26 @@
                         <h4 class="section-title">Contact Information</h4>
                         <div class="row mb-3">
                             <div class="col-4 info-label">Email:</div>
-                            <div class="col-8">{{ $parentInfo->email ?? 'Email is not available!' }}</div>
+                             @if($parentInfo->isPhoneShow)
+                             <div class="col-8">{{ $parentInfo->email ?? 'Email is not available!' }}</div>
+                            @else
+                             <div class="col-8">Email is locked.</div>
+                            
+                            @endif
                         </div>
-                        @if(($parentInfo->isPhoneShow && $parentInfo->phone) || true)
+                        @if($parentInfo->isPhoneShow && $parentInfo->phone)
                         <div class="row mb-3">
                             <div class="col-4 info-label">Phone/Whatsapp:</div>
                             <div class="col-8">{{ $parentInfo->phone ?? 'Phone number is not available!' }}</div>
                         </div>
-                        @endif
+                        @else
+                        <div class="row mb-3">
+                            <div class="col-4 info-label">Phone/Whatsapp:</div>
+                            <div class="col-8">Phone number is locked.</div>
+                        </div>
                         
+                        @endif
+                         @if($parentInfo->isPhoneShow)
                         @if($parentInfo->latitude && $parentInfo->longitude)
                         <div class="mt-4">
                             <h5 class="info-label mb-3">Location</h5>
@@ -187,12 +209,13 @@
                             <small class="text-muted">Approximate location based on parent's coordinates</small>
                         </div>
                         @endif
+                        @endif
                     </div>
                 </div>
             </div>
         </div>
         
-       @if(($parentInfo->isPhoneShow && $parentInfo->phone) || true)
+       @if($parentInfo->isPhoneShow)
     <div class="text-center mt-4 mb-5 contact-buttons">
         <!-- WhatsApp button with distinctive green color -->
          <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $parentInfo->phone ?? '') }}" class="btn btn-lg px-4 me-3 whatsapp-btn" target="_blank">
@@ -209,12 +232,8 @@
             <i class="fas fa-envelope me-2"></i> Email
         </a>
     </div>
-@else
-    <div class="text-center mt-4 mb-5">
-        <a href="mailto:{{ $parentInfo->email }}" class="btn btn-lg px-4 email-btn">
-            <i class="fas fa-envelope me-2"></i> Email
-        </a>
-    </div>
+
+   
 @endif
 
 <style>

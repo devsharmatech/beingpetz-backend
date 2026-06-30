@@ -275,7 +275,34 @@ class FriendRequestController extends Controller
             'received_requests' => $receivedRequests,
         ], 200);
     }
+public function latestReceivedRequests(Request $request)
+{
+    $v = Validator::make($request->all(), [
+        'parent_id' => 'required|exists:users,id',
+    ]);
 
+    if ($v->fails()) {
+        return response()->json([
+            'status' => false,
+            'message' => $v->errors()->first(),
+        ], 422);
+    }
+
+    $parentId = $request->parent_id;
+
+    // latest 5 received requests only
+    $requests = FriendRequest::with('fromParent', 'toParent')
+        ->where('to_parent_id', $parentId)
+        ->where('status', 'pending')
+        ->latest()
+        ->take(5)
+        ->get();
+
+    return response()->json([
+        'status' => true,
+        'data' => $requests,
+    ], 200);
+}
     
     public function friendSuggestions(Request $request)
     {
@@ -315,7 +342,7 @@ class FriendRequestController extends Controller
     ]);
 }
 
-   public function searchUsers(Request $request)
+   public function searchUsers_Old(Request $request)
 {
     $v = Validator::make($request->all(), [
         'parent_id' => 'required|exists:users,id',
@@ -346,8 +373,13 @@ class FriendRequestController extends Controller
     $suggestedPetsQuery = User::whereNotIn('id', $relatedPetIds)
         ->whereNotNull('first_name');
     if ($search) {
-        $suggestedPetsQuery->where('first_name', 'like', '%' . $search . '%');
-    }
+    $suggestedPetsQuery->where(function ($q) use ($search) {
+        $q->where('first_name', 'like', "%{$search}%")
+          ->orWhere('last_name', 'like', "%{$search}%")
+          ->orWhere('username', 'like', "%{$search}%");
+        //   ->orWhere('email', 'like', "%{$search}%");
+    });
+}
 
     $suggestedPets = $suggestedPetsQuery
         ->inRandomOrder()
@@ -357,6 +389,82 @@ class FriendRequestController extends Controller
         'status' => true,
         'message' => 'Suggested friends fetched successfully.',
         'data' => $suggestedPets,
+    ]);
+}
+
+public function searchUsers(Request $request)
+{
+    $v = Validator::make($request->all(), [
+        'parent_id' => 'required|exists:users,id',
+        'search'    => 'nullable|string|max:255',
+    ]);
+
+    if ($v->fails()) {
+        return response()->json([
+            'status'  => false,
+            'message' => $v->errors()->first(),
+        ], 200);
+    }
+
+    $parentId = $request->parent_id;
+    $search   = $request->search;
+
+    $query = User::where('id', '!=', $parentId)
+        ->whereNotNull('first_name');
+
+    if (!empty($search)) {
+        $query->where(function ($q) use ($search) {
+            $q->where('first_name', 'like', "%{$search}%")
+                ->orWhere('last_name', 'like', "%{$search}%")
+                ->orWhere('username', 'like', "%{$search}%");
+        });
+    }
+
+    $users = $query->orderBy('first_name')->get();
+
+    $users->transform(function ($user) use ($parentId) {
+
+        $friendRequest = FriendRequest::where(function ($q) use ($parentId, $user) {
+                $q->where('from_parent_id', $parentId)
+                    ->where('to_parent_id', $user->id);
+            })
+            ->orWhere(function ($q) use ($parentId, $user) {
+                $q->where('from_parent_id', $user->id)
+                    ->where('to_parent_id', $parentId);
+            })
+            ->first();
+
+        $user->is_friend = false;
+        $user->request_sent = false;
+        $user->request_received = false;
+        $user->friend_request_status = null;
+
+        if ($friendRequest) {
+
+            $user->friend_request_status = $friendRequest->status;
+
+            if ($friendRequest->status == 'accepted') {
+                $user->is_friend = true;
+            } elseif (
+                $friendRequest->status == 'pending' &&
+                $friendRequest->from_parent_id == $parentId
+            ) {
+                $user->request_sent = true;
+            } elseif (
+                $friendRequest->status == 'pending' &&
+                $friendRequest->to_parent_id == $parentId
+            ) {
+                $user->request_received = true;
+            }
+        }
+
+        return $user;
+    });
+
+    return response()->json([
+        'status'  => true,
+        'message' => 'Users fetched successfully.',
+        'data'    => $users,
     ]);
 }
 
@@ -391,6 +499,232 @@ public function getFriends(Request $request)
         'status' => true,
         'message' => 'Friend list fetched successfully.',
         'data' => $friends,
+    ]);
+}
+public function userFriendList(Request $request)
+{
+   try {
+        $v = Validator::make($request->all(), [
+            'user_id' => 'required|exists:users,id',
+            'per_page' => 'nullable|integer|min:1|max:100',
+        ]);
+
+        if ($v->fails()) {
+            return response()->json([
+                'status' => false,
+                'message' => $v->errors()->first(),
+            ], 422);
+        }
+
+        $userId = $request->user_id;
+        $perPage = $request->get('per_page', 10);
+
+        $friendRequests = FriendRequest::where('status', 'accepted')
+            ->where(function ($query) use ($userId) {
+                $query->where('from_parent_id', $userId)
+                      ->orWhere('to_parent_id', $userId);
+            })
+            ->with([
+                'fromParent:id,first_name,last_name,username,profile',
+                'toParent:id,first_name,last_name,username,profile'
+            ])
+            ->latest()
+            ->paginate($perPage);
+
+        $friends = $friendRequests->getCollection()
+            ->map(function ($friendRequest) use ($userId) {
+                return $friendRequest->from_parent_id == $userId
+                    ? $friendRequest->toParent
+                    : $friendRequest->fromParent;
+            })
+            ->filter()
+            ->values();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'User friends fetched successfully.',
+            'data' => $friends,
+            'pagination' => [
+                'current_page' => $friendRequests->currentPage(),
+                'per_page' => $friendRequests->perPage(),
+                'total' => $friendRequests->total(),
+                'last_page' => $friendRequests->lastPage(),
+                'has_more_pages' => $friendRequests->hasMorePages(),
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Failed to fetch user friends.',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
+
+public function showUserProfile(Request $request, $userId)
+{
+    try {
+        $authUser = $request->user();
+
+        $user = User::select(
+                'id',
+                'first_name',
+                'last_name',
+                'username',
+                'email',
+                'profile',
+                'created_at'
+            )
+            ->find($userId);
+
+        if (!$user) {
+            return response()->json([
+                'status' => false,
+                'message' => 'User not found.',
+            ], 404);
+        }
+
+        $pets = Pet::where('user_id', $userId)
+            ->select(
+                'id',
+                'user_id',
+                'name',
+                'type',
+                'breed',
+                'gender',
+                'age',
+                'bio',
+                'avatar',
+                'unid',
+                'pet_unique_id',
+                'created_at'
+            )
+            ->latest()
+            ->get();
+
+        $friendRequest = FriendRequest::where(function ($q) use ($authUser, $userId) {
+                $q->where('from_parent_id', $authUser->id)
+                  ->where('to_parent_id', $userId);
+            })
+            ->orWhere(function ($q) use ($authUser, $userId) {
+                $q->where('from_parent_id', $userId)
+                  ->where('to_parent_id', $authUser->id);
+            })
+            ->latest()
+            ->first();
+
+        $isFriend = false;
+        $requestSentByMe = false;
+        $requestReceivedByMe = false;
+        $canSendRequest = true;
+        $canCancelRequest = false;
+        $canAcceptRequest = false;
+
+        if ($friendRequest) {
+            if ($friendRequest->status === 'accepted') {
+                $isFriend = true;
+                $canSendRequest = false;
+            }
+
+            if ($friendRequest->status === 'pending') {
+                $canSendRequest = false;
+
+                if ($friendRequest->from_parent_id == $authUser->id) {
+                    $requestSentByMe = true;
+                    $canCancelRequest = true;
+                }
+
+                if ($friendRequest->to_parent_id == $authUser->id) {
+                    $requestReceivedByMe = true;
+                    $canAcceptRequest = true;
+                }
+            }
+        }
+
+        if ($authUser->id == $userId) {
+            $canSendRequest = false;
+            $canCancelRequest = false;
+            $canAcceptRequest = false;
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'User profile fetched successfully.',
+            'data' => [
+                'user' => $user,
+                'pets' => $pets,
+                'friendship' => [
+                    'is_friend' => $isFriend,
+                    'request_sent_by_me' => $requestSentByMe,
+                    'request_received_by_me' => $requestReceivedByMe,
+                    'friend_request_status' => $friendRequest->status ?? null,
+                    'friend_request_id' => $friendRequest->id ?? null,
+                    'can_send_request' => $canSendRequest,
+                    'can_cancel_request' => $canCancelRequest,
+                    'can_accept_request' => $canAcceptRequest,
+                ]
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Failed to fetch user profile.',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
+
+public function getAllUsers(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'parent_id' => 'required|exists:users,id',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'status'  => false,
+            'message' => $validator->errors()->first(),
+        ], 422);
+    }
+
+    $users = User::select([
+            'id',
+            'user_id',
+            'username',
+            'first_name',
+            'last_name',
+            'profile',
+            'city',
+            'state',
+            'email'
+        ])
+        ->where('id', '!=', $request->parent_id)
+        ->whereNotNull('first_name')
+        ->orderBy('first_name')
+        ->paginate(50);
+
+    $users->getCollection()->transform(function ($user) {
+
+        return [
+            'id' => $user->id,
+            'user_id' => $user->user_id,
+            'username' => $user->username,
+            'first_name' => $user->first_name,
+            'last_name' => $user->last_name,
+            'full_name' => trim($user->first_name . ' ' . $user->last_name),
+            'profile' => $user->profile ? url($user->profile) : null,
+            'city' => $user->city,
+            'state' => $user->state,
+            'email' => $user->email,
+        ];
+    });
+
+    return response()->json([
+        'status' => true,
+        'message' => 'Users fetched successfully.',
+        'data' => $users,
     ]);
 }
 

@@ -23,10 +23,14 @@ class Community extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+    public function memberships()
+{
+    return $this->hasMany(CommunityMembership::class, 'community_id');
+}
     
     public function members()
     {
-        return $this->hasMany(CommunityMembership::class, 'community_id');
+        return $this->hasMany(CommunityMembership::class, 'community_id')->where('status', '1');
     }
 
      public function moderators()
@@ -38,7 +42,8 @@ class Community extends Model
    public function users()
 {
     return $this->belongsToMany(User::class, 'community_memberships', 'community_id', 'parent_id')
-                ->withPivot('role')
+                ->wherePivot('status', '1')
+                ->withPivot(['role', 'status'])
                 ->withTimestamps();
 }
     

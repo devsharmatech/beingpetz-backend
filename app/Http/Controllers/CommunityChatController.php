@@ -156,7 +156,7 @@ class CommunityChatController extends Controller
      $query = CommunityMessage::where('community_id', $request->community_id)
         ->with(['user', 'old_message', 'poll.options', 'poll.options.votes','likes'])
         ->orderBy('created_at', 'asc');
-
+    
     // Apply user-specific deletion filter
     if (!empty($request->user_id)) {
         $query->whereNotIn('id', function ($q) use ($request) {
@@ -167,7 +167,7 @@ class CommunityChatController extends Controller
     }
 
     $messages = $query->get();
-
+   
     // Calculate vote percentages
     $messages->map(function ($message) {
         $message->like_count = $message->likes->count();

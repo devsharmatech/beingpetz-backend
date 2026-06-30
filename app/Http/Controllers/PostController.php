@@ -261,6 +261,9 @@ class PostController extends Controller
         'post_videos.*' => 'required|mimes:mp4,mov,avi',
         'tagged_user_ids' => 'nullable|array',
         'tagged_user_ids.*' => 'exists:users,id',
+        
+        'feeling' => 'nullable|string|max:255',
+        'activity' => 'nullable|string|max:255',
     ]);
 
     if ($validator->fails()) {
@@ -278,6 +281,8 @@ class PostController extends Controller
     $post->slug = Str::slug(Str::random(6) . '-' . now()->timestamp);
     $post->content = $data['content'] ?? null;
     $post->is_public = $data['is_public'] ?? true;
+    $post->feeling = $data['feeling'] ?? null;
+    $post->activity = $data['activity'] ?? null;
     $manager = new ImageManager(new Driver());
     
     if ($request->hasFile('featured_image')) {
@@ -1174,7 +1179,7 @@ public function share(Request $request)
         $query->where(function ($q) use ($keyword) {
             $q->where('content', 'LIKE', "%{$keyword}%")
               ->orWhereHas('parent', function ($q2) use ($keyword) {
-                  $q2->where('name', 'LIKE', "%{$keyword}%");
+                  $q2->where('first_name', 'LIKE', "%{$keyword}%");
               });
         });
       
@@ -1276,13 +1281,13 @@ public function share(Request $request)
 
  
 
-public function save_post(Request $request)
+public function save_post22(Request $request)
 {
     // ✅ Step 1: Validate input (no slug field now)
     $validatedData = $request->validate([
         'user_id' => 'required|exists:users,id',
         'pet_id' => 'required|exists:pets,id',
-        'type' => 'required|in:normal,birthday,repost',
+        'type' => 'required|in:normal,birthday,repost,sponsored',
         'description' => 'required|string',
         'images' => 'required|array|min:1|max:10',
         'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
@@ -1332,6 +1337,154 @@ public function save_post(Request $request)
     // ✅ Step 6: Redirect with success message
     return redirect()->route('admin.post.index')
         ->with('success', 'Post created successfully!');
+}
+
+public function save_post(Request $request)
+{
+    // ✅ Step 1: Validator
+    $validator = Validator::make($request->all(), [
+        'type' => 'required|in:normal,birthday,repost,sponsored',
+        'description' => 'required|string',
+
+        // Conditional fields
+        'user_id' => 'exclude_if:type,sponsored|required|exists:users,id',
+        'pet_id'  => 'exclude_if:type,sponsored|required|exists:pets,id',
+
+        // Media
+        'images' => 'required|array|min:1|max:10',
+        'images.*' => 'image|mimes:jpg,jpeg,png,webp|max:2048',
+
+        'video' => 'nullable|file|mimes:mp4,3gp,mov,avi|max:20480',
+
+        // Sponsored
+        'target_locations' => 'nullable|array',
+        'target_pet_types' => 'nullable|array',
+        'target_breeds' => 'nullable|array',
+        'target_all' => 'nullable|boolean',
+
+        // Extras
+        'feeling' => 'nullable|string|max:255',
+        'activity' => 'nullable|string|max:255',
+    ]);
+
+    // ✅ Step 2: Validation fail
+    if ($validator->fails()) {
+        return redirect()->back()
+            ->withErrors($validator)
+            ->withInput();
+    }
+
+    DB::beginTransaction();
+
+    try {
+
+        $validatedData = $validator->validated();
+
+        // ✅ Step 3: Slug
+        $slug = Str::slug(Str::random(6) . '-' . time());
+
+        // ✅ Step 4: Sponsored Logic
+        $isSponsored = $validatedData['type'] === 'sponsored';
+
+        $ownerId = $isSponsored ? auth()->id() : $validatedData['user_id'];
+        $petId = $isSponsored ? null : $validatedData['pet_id'];
+
+        // ❌ Safety check
+        if (!$isSponsored && (!$ownerId || !$petId)) {
+            return redirect()->back()
+                ->with('error', 'User and Pet are required!')
+                ->withInput();
+        }
+
+        // ✅ Step 5: Create Post
+        $post = new Post();
+        $post->parent_id = $ownerId;
+        $post->slug = $slug;
+        $post->content = $validatedData['description'];
+        $post->is_public = true;
+        $post->pet_id = $petId;
+        $post->post_type = $validatedData['type'];
+        $post->is_sponsored = $isSponsored;
+
+        // JSON Fields
+        $post->target_locations = $validatedData['target_locations'] ?? null;
+        $post->target_pet_types = $validatedData['target_pet_types'] ?? null;
+        $post->target_breeds = $validatedData['target_breeds'] ?? null;
+        $post->target_all = $validatedData['target_all'] ?? false;
+
+        // Extras
+        $post->feeling = $validatedData['feeling'] ?? null;
+        $post->activity = $validatedData['activity'] ?? null;
+
+        $post->save();
+
+        // ✅ Step 6: Save Images
+        if ($request->hasFile('images')) {
+
+            $destination = public_path('uploads/posts');
+
+            if (!file_exists($destination)) {
+                mkdir($destination, 0775, true);
+            }
+
+            foreach ($request->file('images') as $index => $file) {
+
+                if (!$file->isValid()) {
+                    throw new \Exception('Invalid image file detected.');
+                }
+
+                $filename = uniqid('post_image_') . '.' . $file->getClientOriginalExtension();
+                $file->move($destination, $filename);
+
+                PostImage::create([
+                    'post_id' => $post->id,
+                    'image_path' => 'uploads/posts/' . $filename,
+                    'display_order' => $index + 1
+                ]);
+            }
+        }
+
+        // ✅ Step 7: Save Video
+        if ($request->hasFile('video')) {
+
+            $file = $request->file('video');
+
+            if (!$file->isValid()) {
+                throw new \Exception('Invalid video file.');
+            }
+
+            $destination = public_path('uploads/posts/videos');
+
+            if (!file_exists($destination)) {
+                mkdir($destination, 0775, true);
+            }
+
+            $filename = uniqid('post_video_') . '.' . $file->getClientOriginalExtension();
+            $file->move($destination, $filename);
+
+            PostVideo::create([
+                'post_id' => $post->id,
+                'video_path' => 'uploads/posts/videos/' . $filename,
+                'display_order' => 1
+            ]);
+        }
+
+        DB::commit();
+
+        // ✅ Success
+        return redirect()->route('admin.post.index')
+            ->with('success', 'Post created successfully!');
+
+    } catch (\Exception $e) {
+
+        DB::rollBack();
+
+        Log::error('Post Save Error: ' . $e->getMessage());
+
+        return redirect()->back()
+            ->with('error', 'Something went wrong! ' . $e->getMessage()) // helpful in dev
+            ->withInput();
+    }
 }
 
 public function toggleStatus($id, Request $request)
@@ -1392,7 +1545,7 @@ public function deleteVideo($id)
         return response()->json(['success' => false, 'message' => $e->getMessage()]);
     }
 }
-    public function update(Request $request, $id)
+    public function update22(Request $request, $id)
     {
         $post = Post::findOrFail($id);
 
@@ -1453,7 +1606,159 @@ public function deleteVideo($id)
     return redirect()->route('admin.post.index')
         ->with('success', 'Post updated successfully!');
 }
+public function update(Request $request, $id)
+{
+    $post = Post::findOrFail($id);
 
+    // ✅ VALIDATOR
+    $validator = Validator::make($request->all(), [
+        'type' => 'required|in:normal,birthday,repost,sponsored',
+        'description' => 'required|string',
+
+        // 🔥 FIXED (IMPORTANT)
+        'user_id' => 'exclude_if:type,sponsored|required|exists:users,id',
+        'pet_id'  => 'exclude_if:type,sponsored|required|exists:pets,id',
+
+        'images' => 'nullable|array|max:10',
+        'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+
+        'video' => 'nullable|file|mimes:mp4,3gp,mov,avi|max:20480',
+
+        // 🎯 Sponsored
+        'target_locations' => 'nullable|array',
+        'target_pet_types' => 'nullable|array',
+        'target_breeds' => 'nullable|array',
+        'target_all' => 'nullable|boolean',
+
+        // 🎉 Enhancements
+        'feeling' => 'nullable|string|max:255',
+        'activity' => 'nullable|string|max:255',
+        
+    'removed_images' => 'nullable|array',
+    'removed_images.*' => 'exists:post_images,id',
+    ]);
+    
+
+    // ❌ VALIDATION FAIL
+    if ($validator->fails()) {
+        return redirect()->back()
+            ->withErrors($validator)
+            ->withInput();
+    }
+
+    DB::beginTransaction();
+
+    try {
+
+        $validatedData = $validator->validated();
+
+        // ✅ SPONSORED LOGIC
+        $isSponsored = $validatedData['type'] === 'sponsored';
+
+        $ownerId = $isSponsored ? auth()->id() : $validatedData['user_id'];
+        $petId   = $isSponsored ? null : $validatedData['pet_id'];
+
+        // ✅ UPDATE POST
+        $post->parent_id = $ownerId;
+        $post->pet_id = $petId;
+        $post->content = $validatedData['description'];
+        $post->post_type = $validatedData['type'];
+        $post->is_sponsored = $isSponsored;
+
+        // 🔥 ARRAY FIX (IMPORTANT)
+        $post->target_locations = $validatedData['target_locations'] ?? null;
+        $post->target_pet_types = $validatedData['target_pet_types'] ?? null;
+        $post->target_breeds    = $validatedData['target_breeds'] ?? null;
+
+        $post->target_all = $validatedData['target_all'] ?? false;
+
+        $post->feeling = $validatedData['feeling'] ?? null;
+        $post->activity = $validatedData['activity'] ?? null;
+
+        $post->save();
+
+
+        // ================= IMAGES =================
+        if ($request->hasFile('images')) {
+
+            $destination = public_path('uploads/posts');
+
+            if (!file_exists($destination)) {
+                mkdir($destination, 0775, true);
+            }
+
+            $existingCount = PostImage::where('post_id', $post->id)->count();
+
+            foreach ($request->file('images') as $index => $file) {
+
+                if (!$file->isValid()) {
+                    throw new \Exception('Invalid image file.');
+                }
+
+                $filename = uniqid('post_image_') . '.' . $file->getClientOriginalExtension();
+                $file->move($destination, $filename);
+
+                PostImage::create([
+                    'post_id' => $post->id,
+                    'image_path' => 'uploads/posts/' . $filename,
+                    'display_order' => $existingCount + $index + 1
+                ]);
+            }
+        }
+
+        // ================= VIDEO =================
+        if ($request->hasFile('video')) {
+
+            $file = $request->file('video');
+
+            if (!$file->isValid()) {
+                throw new \Exception('Invalid video file.');
+            }
+
+            // 🔥 DELETE OLD VIDEO
+            $existingVideo = PostVideo::where('post_id', $post->id)->first();
+
+            if ($existingVideo) {
+                $oldPath = public_path($existingVideo->video_path);
+                if (file_exists($oldPath)) {
+                    unlink($oldPath);
+                }
+                $existingVideo->delete();
+            }
+
+            $destination = public_path('uploads/posts/videos');
+
+            if (!file_exists($destination)) {
+                mkdir($destination, 0775, true);
+            }
+
+            $filename = uniqid('post_video_') . '.' . $file->getClientOriginalExtension();
+            $file->move($destination, $filename);
+
+            PostVideo::create([
+                'post_id' => $post->id,
+                'video_path' => 'uploads/posts/videos/' . $filename,
+                'display_order' => 1
+            ]);
+        }
+
+        DB::commit();
+
+        // ✅ SUCCESS
+        return redirect()->route('admin.post.index')
+            ->with('success', 'Post updated successfully!');
+
+    } catch (\Exception $e) {
+
+        DB::rollBack();
+
+        Log::error('Post Update Error: ' . $e->getMessage());
+
+        return redirect()->back()
+            ->with('error', 'Something went wrong! ' . $e->getMessage())
+            ->withInput();
+    }
+}
     public function post_logs()
     {
         $posts = Post::with([
@@ -1554,7 +1859,86 @@ public function deleteVideo($id)
     }
 
 
+public function getPostDetails(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'post_id'   => 'required|exists:posts,id',
+        'parent_id' => 'required|exists:users,id',
+    ]);
 
+    if ($validator->fails()) {
+        return response()->json([
+            'status'  => false,
+            'message' => $validator->errors()->first(),
+            'errors'  => $validator->errors(),
+        ], 422);
+    }
+
+    $post = Post::with([
+        'parent',
+        'pet',
+        'images',
+        'videos',
+        'taggedUsers',
+        'repost',
+        'repost.parent',
+        'repost.images',
+        'repost.videos'
+    ])
+    ->withCount([
+        'likes',
+        'comments',
+        'shares',
+        'reposts'
+    ])
+    ->find($request->post_id);
+
+    if (!$post) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Post not found.'
+        ],404);
+    }
+
+    // Like Status
+    $post->isLiked = Like::where('post_id',$post->id)
+        ->where('parent_id',$request->parent_id)
+        ->exists();
+
+    // Share Status
+    $post->isShared = Share::where('post_id',$post->id)
+        ->where('parent_id',$request->parent_id)
+        ->exists();
+
+    // Owner
+    $post->isOwner = $post->parent_id == $request->parent_id;
+
+    // Human Date
+    $post->created_at_human = Carbon::parse($post->created_at)->diffForHumans();
+
+    // Comments
+    $comments = Comment::where('post_id',$post->id)
+        ->with('user')
+        ->latest()
+        ->get()
+        ->map(function ($comment) use ($request) {
+
+            $comment->created_at_human = Carbon::parse($comment->created_at)->diffForHumans();
+
+            $comment->isOwner = $comment->parent_id == $request->parent_id;
+
+            return $comment;
+        });
+
+    return response()->json([
+        'status' => true,
+        'message' => 'Post details fetched successfully.',
+        'data' => [
+            'post' => $post,
+            'comments' => $comments
+        ]
+    ]);
+}
 
     
     
