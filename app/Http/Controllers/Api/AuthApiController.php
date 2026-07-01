@@ -11,6 +11,7 @@ use Intervention\Image\ImageManager;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 
@@ -552,7 +553,83 @@ public function socialLogin(Request $request)
                         File::delete($localImagePath);
                     }
                   }
-                $user->delete();
+                
+                // Perform soft delete to prevent foreign key errors
+                $user->deleted_at = 0; // 0 for inactive/deleted
+
+                // Hide user's posts, comments, and remove likes
+                DB::table('posts')
+                    ->where('parent_id', $user->id)
+                    ->update(['status' => 'inactive', 'deleted_at' => 0]);
+                
+                DB::table('comments')
+                    ->where('parent_id', $user->id)
+                    ->update(['status' => 'inactive', 'deleted_at' => now()]);
+                
+                DB::table('likes')
+                    ->where('parent_id', $user->id)
+                    ->delete();
+
+                DB::table('comment_likes')
+                    ->where('user_id', $user->id)
+                    ->delete();
+
+                // 2. Contests
+                // Contest Entries: Soft-delete
+                DB::table('contest_entries')
+                    ->where('user_id', $user->id)
+                    ->update(['deleted_at' => now()]);
+
+                // Contest Votes: Delete
+                DB::table('contest_votes')
+                    ->where('user_id', $user->id)
+                    ->delete();
+
+                // 3. Communities
+                // Memberships: Set to inactive
+                DB::table('community_memberships')
+                    ->where('parent_id', $user->id)
+                    ->update(['status' => 0]);
+                
+                // Community Messages: Anonymize text to not break reply chains
+                DB::table('community_messages')
+                    ->where('parent_id', $user->id)
+                    ->update([
+                        'message_text' => 'This message was deleted.',
+                        'media_path' => null
+                    ]);
+
+                // 4. Listings & Reports
+                // Adoption Listings: Delete since ENUM only has available, pending, adopted
+                DB::table('adoption_listings')
+                    ->where('user_id', $user->id)
+                    ->delete();
+
+                // Lost/Found Reports: Set to cancelled (valid ENUM value)
+                DB::table('lost_found_reports')
+                    ->where('user_id', $user->id)
+                    ->update(['status' => 'cancelled']);
+
+                // 5. Pets
+                // Soft delete pets instead of physical removal
+                DB::table('pets')
+                    ->where('user_id', $user->id)
+                    ->update(['deleted_at' => now()]);
+
+                // Suffix email and phone to allow re-registration
+                if ($user->email) {
+                    $user->email = 'deleted_' . time() . '_' . $user->email;
+                }
+                if ($user->phone) {
+                    $user->phone = 'deleted_' . time() . '_' . $user->phone;
+                }
+                $user->save();
+
+                // Revoke all tokens
+                if (method_exists($user, 'tokens')) {
+                    $user->tokens()->delete();
+                }
+
                 return response()->json([
                     'status' => true,
                     'message' => 'Account deleted successfully.',

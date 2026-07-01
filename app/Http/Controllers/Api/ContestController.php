@@ -472,13 +472,13 @@ public function vote(Request $request)
         return $this->error('You cannot vote for your own entry.');
     }
 
-    // One vote per parent per contest
-    $alreadyVoted = ContestVote::where('contest_id', $contest->id)
+    // One vote per parent per entry
+    $alreadyVoted = ContestVote::where('entry_id', $entry->id)
         ->where('user_id', $user->id)
         ->exists();
 
     if ($alreadyVoted) {
-        return $this->error('You have already voted in this contest.');
+        return $this->error('You have already voted for this entry.');
     }
 
     // Save vote
