@@ -788,6 +788,7 @@ public function repost(Request $request)
         $userId=$request->parent_id;
         
         $posts = Post::where('parent_id', $request->parent_id)
+                 ->where('status', 'active')
                  ->whereNotIn('id', function ($query) use ($userId) {
                   $query->select('post_id')
                       ->from('post_hides')
@@ -810,7 +811,8 @@ public function repost(Request $request)
   public function getAllPosts(Request $request)
   {
        
-        $posts = Post::with(['images', 'videos','parent','repost','repost.images', 'repost.videos','taggedUsers','pet'])
+        $posts = Post::where('status', 'active')
+            ->with(['images', 'videos','parent','repost','repost.images', 'repost.videos','taggedUsers','pet'])
             ->withCount(['likes', 'shares', 'comments','reposts'])
             ->orderBy('created_at', 'desc')
             ->simplePaginate(20);
@@ -1874,7 +1876,8 @@ public function getPostDetails(Request $request)
         ], 422);
     }
 
-    $post = Post::with([
+    $post = Post::where('status', 'active')
+        ->with([
         'parent',
         'pet',
         'images',

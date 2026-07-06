@@ -519,8 +519,8 @@ public function socialLogin(Request $request)
                     if (File::exists($localImagePath)) {
                         File::delete($localImagePath);
                     }
-                  }
                     $user->profile = null;
+                  }
                     $user->save();
                 return response()->json([
                     'status' => true,
@@ -552,15 +552,53 @@ public function socialLogin(Request $request)
                     if (File::exists($localImagePath)) {
                         File::delete($localImagePath);
                     }
-                  }
+                    $user->profile = null;
+                 }
                 
                 // Perform soft delete to prevent foreign key errors
                 $user->deleted_at = 0; // 0 for inactive/deleted
 
-                // Hide user's posts, comments, and remove likes
+                // 1. Posts & Comments
+                // Find user's post IDs to hide their reposts
+                $userPostIds = DB::table('posts')->where('parent_id', $user->id)->pluck('id');
+
+                if ($userPostIds->isNotEmpty()) {
+                    // Hide any posts that reposted this user's posts
+                    DB::table('posts')
+                        ->whereIn('repost_id', $userPostIds)
+                        ->update(['status' => 'inactive', 'deleted_at' => 0]);
+                }
+
+                // Posts: Set to inactive, soft delete, and clear media
+                $posts = DB::table('posts')->where('parent_id', $user->id)->get();
+                foreach ($posts as $p) {
+                    if (!empty($p->featured_image)) {
+                        $localPath = public_path(parse_url($p->featured_image, PHP_URL_PATH));
+                        if (File::exists($localPath)) File::delete($localPath);
+                    }
+                    if (!empty($p->featured_video)) {
+                        $localPath = public_path(parse_url($p->featured_video, PHP_URL_PATH));
+                        if (File::exists($localPath)) File::delete($localPath);
+                    }
+                    if (!empty($p->media_urls)) {
+                        $urls = json_decode($p->media_urls, true);
+                        if (is_array($urls)) {
+                            foreach ($urls as $url) {
+                                $localPath = public_path(parse_url($url, PHP_URL_PATH));
+                                if (File::exists($localPath)) File::delete($localPath);
+                            }
+                        }
+                    }
+                }
                 DB::table('posts')
                     ->where('parent_id', $user->id)
-                    ->update(['status' => 'inactive', 'deleted_at' => 0]);
+                    ->update([
+                        'status' => 'inactive', 
+                        'deleted_at' => 0,
+                        'featured_image' => null,
+                        'featured_video' => null,
+                        'media_urls' => null
+                    ]);
                 
                 DB::table('comments')
                     ->where('parent_id', $user->id)
@@ -600,21 +638,47 @@ public function socialLogin(Request $request)
                     ]);
 
                 // 4. Listings & Reports
-                // Adoption Listings: Delete since ENUM only has available, pending, adopted
+                // Adoption Listings: Delete media and then row
+                $adoptionListings = DB::table('adoption_listings')->where('user_id', $user->id)->get();
+                foreach ($adoptionListings as $listing) {
+                    if (!empty($listing->featured_image)) {
+                        $localPath = public_path(parse_url($listing->featured_image, PHP_URL_PATH));
+                        if (File::exists($localPath)) File::delete($localPath);
+                    }
+                }
                 DB::table('adoption_listings')
                     ->where('user_id', $user->id)
                     ->delete();
 
-                // Lost/Found Reports: Set to cancelled (valid ENUM value)
+                // Lost/Found Reports: Delete media and set to cancelled
+                $lfReports = DB::table('lost_found_reports')->where('user_id', $user->id)->get();
+                foreach ($lfReports as $report) {
+                    if (!empty($report->images)) {
+                        $urls = json_decode($report->images, true);
+                        if (is_array($urls)) {
+                            foreach ($urls as $url) {
+                                $localPath = public_path(parse_url($url, PHP_URL_PATH));
+                                if (File::exists($localPath)) File::delete($localPath);
+                            }
+                        }
+                    }
+                }
                 DB::table('lost_found_reports')
                     ->where('user_id', $user->id)
-                    ->update(['status' => 'cancelled']);
+                    ->update(['status' => 'cancelled', 'images' => null]);
 
                 // 5. Pets
-                // Soft delete pets instead of physical removal
+                // Soft delete pets and clear profile pictures
+                $pets = DB::table('pets')->where('user_id', $user->id)->get();
+                foreach ($pets as $pet) {
+                    if (!empty($pet->avatar)) {
+                        $localPath = public_path(parse_url($pet->avatar, PHP_URL_PATH));
+                        if (File::exists($localPath)) File::delete($localPath);
+                    }
+                }
                 DB::table('pets')
                     ->where('user_id', $user->id)
-                    ->update(['deleted_at' => now()]);
+                    ->update(['deleted_at' => now(), 'avatar' => null]);
 
                 // Suffix email and phone to allow re-registration
                 if ($user->email) {

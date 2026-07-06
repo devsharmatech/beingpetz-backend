@@ -12,7 +12,7 @@ class V2Post extends Model
     {
         static::addGlobalScope('active_not_deleted', function ($builder) {
             // According to USER: deleted_at = 1 means active, deleted_at = 0 means deleted.
-            $builder->where('deleted_at', 1);
+            $builder->where('deleted_at', 1)->where('status', 'active');
         });
     }
 

@@ -371,7 +371,8 @@ public function latestReceivedRequests(Request $request)
         ->push($parentId);
 
     $suggestedPetsQuery = User::whereNotIn('id', $relatedPetIds)
-        ->whereNotNull('first_name');
+        ->whereNotNull('first_name')
+        ->where('deleted_at', 1);
     if ($search) {
     $suggestedPetsQuery->where(function ($q) use ($search) {
         $q->where('first_name', 'like', "%{$search}%")
@@ -410,7 +411,8 @@ public function searchUsers(Request $request)
     $search   = $request->search;
 
     $query = User::where('id', '!=', $parentId)
-        ->whereNotNull('first_name');
+        ->whereNotNull('first_name')
+        ->where('deleted_at', 1);
 
     if (!empty($search)) {
         $query->where(function ($q) use ($search) {
@@ -702,6 +704,7 @@ public function getAllUsers(Request $request)
         ])
         ->where('id', '!=', $request->parent_id)
         ->whereNotNull('first_name')
+        ->where('deleted_at', 1)
         ->orderBy('first_name')
         ->paginate(50);
 
