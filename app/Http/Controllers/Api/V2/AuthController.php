@@ -31,7 +31,7 @@ class AuthController extends Controller
                 'last_name' => 'nullable|string|max:255',
                 // 'username' => 'required|string|max:30',
                 'email' => 'required|email|max:255',
-                // 'phone' => 'required|string|max:20',
+                'phone' => 'required|string|max:20',
                 // 'country_code' => 'nullable|string|max:10',
                 // 'latitude' => 'nullable|numeric|between:-90,90',
                 // 'longitude' => 'nullable|numeric|between:-180,180',
@@ -110,6 +110,7 @@ class AuthController extends Controller
                     'first_name' => $sanitized['first_name'],
                     'last_name' => $sanitized['last_name'],
                     'email' => $sanitized['email'],
+                    'phone' => $sanitized['phone'],
                     'otp' => $otp,
                     'otp_expires_at' => now()->addMinutes(10),
                 ]);
