@@ -59,17 +59,16 @@ class AuthController extends Controller
 
             $email = strtolower($validated['email']);
 
-            // Check absolute uniqueness of completed users
-            // if (User::where('phone', $phone)->where('isComplete', 1)->exists()) {
-            //     return response()->json(['success' => false, 'message' => 'This phone number is already registered. Please login.'], 422);
-            // }
+            if (User::where('phone', $validated['phone'])->where('isComplete', 1)->exists()) {
+                return response()->json(['success' => false, 'message' => 'This phone number is already registered. Please login.'], 422);
+            }
             if (User::where('email', $email)->where('isComplete', 1)->exists()) {
                 return response()->json(['success' => false, 'message' => 'This email is already registered. Please login.'], 422);
             }
 
             // Find if an incomplete user exists with this email or phone to allow re-registration
-            $user = User::where(function ($q) use ($email) {
-                $q->where('email', $email);
+            $user = User::where(function ($q) use ($email, $validated) {
+                $q->where('email', $email)->orWhere('phone', $validated['phone']);
             })->where('isComplete', 0)->first();
 
             // Now check username uniqueness (excluding the current incomplete user if found)
@@ -91,6 +90,7 @@ class AuthController extends Controller
             $sanitized = ValidationService::sanitizeInput([
                 'first_name' => $validated['first_name'],
                 'last_name' => $validated['last_name'],
+                'phone' => $validated['phone'],
                 'email' => $email,
             ]);
 
@@ -120,7 +120,7 @@ class AuthController extends Controller
                     'user_id' => $userId,
                     'first_name' => $sanitized['first_name'],
                     'last_name' => $sanitized['last_name'],
-                    
+                    'phone' => $sanitized['phone'],
                     'email' => $sanitized['email'],
                     
                     'password' => Hash::make(rand(1111111111, 9999999999)),
@@ -162,7 +162,8 @@ class AuthController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'email' => 'required|email',
+                'email' => 'required_without:phone|email',
+                'phone' => 'required_without:email|string',
                 'otp' => 'required|digits:6',
             ]);
 
@@ -170,7 +171,14 @@ class AuthController extends Controller
                 return response()->json(['success' => false, 'message' => $validator->errors()->first()], 422);
             }
 
-            $user = User::where('email', $request->email)->first();
+            $user = User::where(function($query) use ($request) {
+                if ($request->has('email')) {
+                    $query->orWhere('email', $request->email);
+                }
+                if ($request->has('phone')) {
+                    $query->orWhere('phone', $request->phone);
+                }
+            })->first();
 
             if (!$user) {
                 return response()->json(['success' => false, 'message' => 'User not found!'], 404);
