@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\AuthApiController;
+use App\Http\Controllers\Api\VendorApiController;
+use App\Http\Controllers\Api\VendorMessageController;
+use App\Http\Controllers\Api\VendorAuthController;
 use App\Http\Controllers\PetController;
 use App\Http\Controllers\FriendRequestController;
 use App\Http\Controllers\PostController;
@@ -275,3 +278,64 @@ Route::controller(CMSApiController::class)->prefix('v1/cms')->group(function () 
     Route::get('settings', 'getSettings');
 });
 
+
+// Vendor Routes
+Route::prefix('v1/vendor')->group(function () {
+    // New Auth Routes
+    Route::post('register', [VendorAuthController::class, 'register']);
+    Route::post('login/send-otp', [VendorAuthController::class, 'sendOtp']);
+    Route::post('login/verify-otp', [VendorAuthController::class, 'verifyOtp']);
+    
+    Route::middleware('auth:sanctum')->group(function () {
+        // Vendor My Custom Services
+        Route::get('my-custom-services', [\App\Http\Controllers\Api\VendorServiceController::class, 'index']);
+        Route::post('my-custom-services/create', [\App\Http\Controllers\Api\VendorServiceController::class, 'store']);
+        Route::post('my-custom-services/{id}/edit', [\App\Http\Controllers\Api\VendorServiceController::class, 'update']);
+        Route::post('my-custom-services/{id}/toggle', [\App\Http\Controllers\Api\VendorServiceController::class, 'toggleStatus']);
+        Route::delete('my-custom-services/{id}', [\App\Http\Controllers\Api\VendorServiceController::class, 'destroy']);
+
+        // Vendor Availability Calendar
+        Route::get('availability', [\App\Http\Controllers\Api\VendorCalendarController::class, 'getAvailability']);
+        Route::post('availability/update', [\App\Http\Controllers\Api\VendorCalendarController::class, 'updateAvailability']);
+
+        // Vendor Notifications
+        Route::get('notifications', [\App\Http\Controllers\Api\VendorNotificationController::class, 'index']);
+        Route::post('notifications/mark-read', [\App\Http\Controllers\Api\VendorNotificationController::class, 'markRead']);
+
+        Route::get('dashboard', [VendorApiController::class, 'dashboard']);
+        Route::get('earnings', [VendorApiController::class, 'earningsHistory']);
+        Route::get('chart', [VendorApiController::class, 'weeklyChart']);
+        
+        // Vendor Bookings
+        Route::get('bookings/upcoming', [VendorApiController::class, 'upcomingBookings']);
+        Route::get('bookings', [VendorApiController::class, 'allBookings']);
+        Route::get('bookings/{id}', [VendorApiController::class, 'getBookingDetails']);
+        Route::post('bookings/{id}/accept', [VendorApiController::class, 'acceptBooking']);
+        Route::post('bookings/{id}/reject', [VendorApiController::class, 'rejectBooking']);
+        Route::post('bookings/{id}/reschedule', [VendorApiController::class, 'rescheduleBooking']);
+        Route::post('bookings/{id}/complete', [VendorApiController::class, 'completeBooking']);
+
+        Route::get('services', [VendorApiController::class, 'myServices']);
+        Route::get('profile', [VendorApiController::class, 'getProfile']);
+        Route::post('profile', [VendorApiController::class, 'updateProfile']);
+        
+        // Vendor Wallet & Earnings
+        Route::get('earnings/wallet', [\App\Http\Controllers\Api\VendorEarningController::class, 'wallet']);
+        Route::post('earnings/withdraw', [\App\Http\Controllers\Api\VendorEarningController::class, 'withdraw']);
+
+        // Vendor KYC
+        Route::get('kyc', [\App\Http\Controllers\Api\VendorKycController::class, 'status']);
+        Route::post('kyc/upload', [\App\Http\Controllers\Api\VendorKycController::class, 'upload']);
+
+        // Vendor Reviews
+        Route::get('reviews', [\App\Http\Controllers\Api\VendorReviewController::class, 'index']);
+
+        // Vendor Support
+        Route::get('support/messages', [\App\Http\Controllers\Api\VendorSupportController::class, 'messages']);
+        Route::post('support/message', [\App\Http\Controllers\Api\VendorSupportController::class, 'sendMessage']);
+
+        Route::get('messages', [\App\Http\Controllers\Api\VendorMessageController::class, 'history']);
+        Route::get('messages/{customerId}', [\App\Http\Controllers\Api\VendorMessageController::class, 'chatWithCustomer']);
+        Route::post('messages/send', [\App\Http\Controllers\Api\VendorMessageController::class, 'sendMessage']);
+    });
+});

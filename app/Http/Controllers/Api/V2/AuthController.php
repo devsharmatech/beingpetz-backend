@@ -38,6 +38,7 @@ class AuthController extends Controller
                 // 'captcha_answer' => 'required|string',
                 // 'captcha_key' => 'required|string',
                 // 'profile' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+                'send_otp_via' => 'nullable|in:email,whatsapp',
             ]);
 
             if ($validator->fails()) {
@@ -130,20 +131,12 @@ class AuthController extends Controller
                 ]);
             }
 
-            // Send OTP email
-            try {
-                Log::info("Attempting to send OTP email to: " . $user->email);
-                Mail::raw("Your Beingpetz OTP is: $otp", function ($message) use ($user) {
-                    $message->to($user->email)->subject('Your OTP Code - Beingpetz');
-                });
-                Log::info("OTP email sent successfully to: " . $user->email);
-            } catch (\Exception $e) {
-                Log::error("Failed to send OTP email to " . $user->email . ". Error: " . $e->getMessage());
-            }
+            // Dispatch OTP based on requested method or fallback
+            $this->dispatchOtp($user, $otp, $request->input('send_otp_via'));
 
             return response()->json([
                 'success' => true,
-                'message' => 'OTP sent successfully to your email.',
+                'message' => 'OTP sent successfully.',
                 'data' => [
                     'email' => $user->email
                 ]
@@ -266,6 +259,7 @@ class AuthController extends Controller
                 'username' => 'nullable|string',
                 'email' => 'nullable|email',
                 'phone' => 'nullable|string',
+                'send_otp_via' => 'nullable|in:email,whatsapp',
             ]);
 
             if ($validator->fails()) {
@@ -297,21 +291,12 @@ class AuthController extends Controller
             $user->otp_expires_at = now()->addMinutes(10);
             $user->save();
 
-            if (!empty($user->email)) {
-                try {
-                    Log::info("Attempting to send Login OTP email to: " . $user->email);
-                    Mail::raw("Your OTP for login is: $otp (valid for 10 minutes)", function ($message) use ($user) {
-                        $message->to($user->email)->subject('Your Login OTP');
-                    });
-                    Log::info("Login OTP email sent successfully to: " . $user->email);
-                } catch (\Exception $e) {
-                    Log::error("Failed to send Login OTP email to " . $user->email . ". Error: " . $e->getMessage());
-                }
-            }
+            // Dispatch OTP based on requested method or fallback
+            $this->dispatchOtp($user, $otp, $request->input('send_otp_via'));
 
             return response()->json([
                 'success' => true,
-                'message' => 'OTP sent to your email.',
+                'message' => 'OTP sent successfully.',
                 'data' => [
                     'email' => $user->email,
                     'phone' => $user->phone
@@ -405,6 +390,7 @@ class AuthController extends Controller
                 'email' => 'nullable|email',
                 'phone' => 'nullable|string',
                 'username' => 'nullable|string',
+                'send_otp_via' => 'nullable|in:email,whatsapp',
             ]);
 
             if ($validator->fails()) {
@@ -431,18 +417,8 @@ class AuthController extends Controller
             $user->otp_expires_at = now()->addMinutes(10);
             $user->save();
 
-            // Send OTP email
-            if (!empty($user->email)) {
-                try {
-                    Log::info("Resending OTP email to: " . $user->email);
-                    Mail::raw("Your Beingpetz OTP is: $otp (valid for 10 minutes)", function ($message) use ($user) {
-                        $message->to($user->email)->subject('Resent OTP Code - Beingpetz');
-                    });
-                    Log::info("Resent OTP email successfully sent to: " . $user->email);
-                } catch (\Exception $e) {
-                    Log::error("Failed to resend OTP email to " . $user->email . ". Error: " . $e->getMessage());
-                }
-            }
+            // Dispatch OTP based on requested method or fallback
+            $this->dispatchOtp($user, $otp, $request->input('send_otp_via'));
 
             return response()->json([
                 'success' => true,
@@ -475,6 +451,7 @@ class AuthController extends Controller
                 'email' => 'nullable|email',
                 'phone' => 'nullable|string',
                 'username' => 'nullable|string',
+                'send_otp_via' => 'nullable|in:email,whatsapp',
             ]);
 
             if ($validator->fails()) {
@@ -506,16 +483,8 @@ class AuthController extends Controller
             $user->otp_expires_at = now()->addMinutes(15);
             $user->save();
 
-            // Send OTP email
-            if ($user->email) {
-                try {
-                    Mail::raw("Your password reset OTP is: $otp (valid for 15 minutes)", function ($message) use ($user) {
-                        $message->to($user->email)->subject('Password Reset OTP - Beingpetz');
-                    });
-                } catch (\Exception $e) {
-                    Log::error("Failed to send forgot password email: " . $e->getMessage());
-                }
-            }
+            // Dispatch OTP based on requested method or fallback
+            $this->dispatchOtp($user, $otp, $request->input('send_otp_via'));
 
             return response()->json([
                 'success' => true,
@@ -843,5 +812,136 @@ class AuthController extends Controller
             'available' => false,
             'message' => 'Username already exists'
         ]);
+    }
+
+    /**
+     * Send OTP via WhatsApp
+     *
+     * @param string $phone
+     * @param int|string $otp
+     * @return bool
+     */
+    protected function sendWhatsAppOtp($phone, $otp)
+    {
+        $token = env('INSIGN_SMS_TOKEN');
+        $phoneNumberId = env('INSIGN_PHONE_NUMBER_ID');
+
+        if (!$token || !$phoneNumberId || empty($phone)) {
+            return false;
+        }
+        
+        $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+        if (strlen($cleanPhone) === 10) {
+            $cleanPhone = '91' . $cleanPhone;
+        }
+
+        $payload = [
+            "messaging_product" => "whatsapp",
+            "recipient_type" => "individual",
+            "to" => $cleanPhone,
+            "type" => "template",
+            "template" => [
+                "name" => "verification",
+                "language" => [
+                    "code" => "en_US"
+                ],
+                "components" => [
+                    [
+                        "type" => "body",
+                        "parameters" => [
+                            [
+                                "type" => "text",
+                                "text" => (string) $otp
+                            ]
+                        ]
+                    ],
+                    [
+                        "type" => "button",
+                        "sub_type" => "url",
+                        "index" => "0",
+                        "parameters" => [
+                            [
+                                "type" => "text",
+                                "text" => (string) $otp
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        $url = "https://multichannel.insignsms.com/api/v1/whatsapp/{$phoneNumberId}/messages"; 
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            "Authorization: Bearer " . $token,
+            "Content-Type: application/json"
+        ]);
+
+        $response = curl_exec($ch);
+        $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($httpcode !== 200) {
+            Log::error('WhatsApp OTP Failed in V2 AuthController', ['response' => $response, 'httpcode' => $httpcode]);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Dispatch OTP based on requested method or fallback
+     *
+     * @param User $user
+     * @param int|string $otp
+     * @param string|null $sendOtpVia
+     * @return void
+     */
+    protected function dispatchOtp($user, $otp, $sendOtpVia = null)
+    {
+        $sent = false;
+
+        // Try explicitly requested method first
+        if ($sendOtpVia === 'whatsapp' && !empty($user->phone)) {
+            $sent = $this->sendWhatsAppOtp($user->phone, $otp);
+        } elseif ($sendOtpVia === 'email' && !empty($user->email)) {
+            $sent = $this->sendEmailOtp($user->email, $otp);
+        }
+
+        // Fallback if not specified or requested method couldn't be sent
+        if (!$sent) {
+            if (!empty($user->phone)) {
+                $this->sendWhatsAppOtp($user->phone, $otp);
+            } elseif (!empty($user->email)) {
+                $this->sendEmailOtp($user->email, $otp);
+            }
+        }
+    }
+
+    /**
+     * Send OTP via Email
+     *
+     * @param string $email
+     * @param int|string $otp
+     * @return bool
+     */
+    protected function sendEmailOtp($email, $otp)
+    {
+        try {
+            Log::info("Attempting to send OTP email to: " . $email);
+            Mail::raw("Your Beingpetz OTP is: $otp (valid for 10 minutes)", function ($message) use ($email) {
+                $message->to($email)->subject('Your OTP Code - Beingpetz');
+            });
+            Log::info("OTP email sent successfully to: " . $email);
+            return true;
+        } catch (\Exception $e) {
+            Log::error("Failed to send OTP email to " . $email . ". Error: " . $e->getMessage());
+            return false;
+        }
     }
 }

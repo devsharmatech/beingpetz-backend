@@ -1,0 +1,412 @@
+{
+	"info": {
+		"name": "BeingPetz Vendor/Service Provider APIs",
+		"description": "API collection for the Vendor/Service Provider application.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Vendor/Service Provider APIs",
+			"item": [
+				{
+					"name": "1. Vendor/Service Provider Register",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{"key": "first_name", "value": "Test", "type": "text"},
+								{"key": "last_name", "value": "Vendor", "type": "text"},
+								{"key": "email", "value": "testvendor@example.com", "type": "text"},
+								{"key": "phone", "value": "1234567890", "type": "text"},
+								{"key": "business_name", "value": "Test Clinic", "type": "text"},
+								{"key": "legal_name", "value": "Test Clinic LLC", "type": "text"},
+								{"key": "services[0]", "value": "veterinary", "type": "text"},
+								{"key": "services[1]", "value": "grooming", "type": "text"},
+								{"key": "area", "value": "Downtown", "type": "text"},
+								{"key": "experience_years", "value": "5-10", "type": "text"},
+								{"key": "primary_gov_doc", "type": "file", "src": []},
+								{"key": "dpdp_consent", "value": "1", "type": "text"},
+								{"key": "vet_clinic_name", "value": "Super Vet", "type": "text"},
+								{"key": "registration_number", "value": "VET123456", "type": "text"},
+								{"key": "clinic_address", "value": "123 Vet Street", "type": "text"},
+								{"key": "specialization[0]", "value": "Surgery", "type": "text"},
+								{"key": "available_in_emergency", "value": "1", "type": "text"},
+								{"key": "facility_capacity", "value": "20", "type": "text"},
+								{"key": "cage_free_facility", "value": "1", "type": "text"},
+								{"key": "trade_licence_number", "value": "TL987654", "type": "text"}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/vendor/register",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "vendor", "register"]
+						}
+					}
+				},
+				{
+					"name": "2. Vendor/Service Provider Send OTP",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "phone",
+									"value": "1234567890",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/vendor/login/send-otp",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "vendor", "login", "send-otp"]
+						}
+					}
+				},
+				{
+					"name": "3. Vendor/Service Provider Verify OTP",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if(jsonData.token) {",
+									"    pm.environment.set(\"vendor_token\", jsonData.token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "phone",
+									"value": "1234567890",
+									"type": "text"
+								},
+								{
+									"key": "otp",
+									"value": "123456",
+									"description": "Enter the 6 digit OTP returned from Send OTP API",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/vendor/login/verify-otp",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "vendor", "login", "verify-otp"]
+						}
+					}
+				},
+				{
+					"name": "Vendor/Service Provider Dashboard Overview",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{vendor_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/vendor/dashboard",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"vendor",
+								"dashboard"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Vendor/Service Provider Earnings History",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{vendor_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/vendor/earnings",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"vendor",
+								"earnings"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Vendor/Service Provider Weekly Chart Data",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{vendor_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/vendor/chart",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"vendor",
+								"chart"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Vendor/Service Provider Upcoming Bookings",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{vendor_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/vendor/bookings/upcoming",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"vendor",
+								"bookings",
+								"upcoming"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Vendor/Service Provider All Bookings",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{vendor_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/vendor/bookings",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"vendor",
+								"bookings"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Vendor/Service Provider My Services",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{vendor_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/vendor/services",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"vendor",
+								"services"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Vendor/Service Provider Message History",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{vendor_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/vendor/messages",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"vendor",
+								"messages"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Vendor/Service Provider Update Profile",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{vendor_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "name",
+									"value": "John Vendor",
+									"type": "text"
+								},
+								{
+									"key": "phone",
+									"value": "+1999999999",
+									"type": "text"
+								},
+								{
+									"key": "address",
+									"value": "123 Business Rd",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/vendor/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"vendor",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "https://beingpetz.com/petz-info/public"
+		},
+		{
+			"key": "vendor_token",
+			"value": ""
+		}
+	]
+}

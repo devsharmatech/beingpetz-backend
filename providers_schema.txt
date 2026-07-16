@@ -1,0 +1,6 @@
+[
+    {
+        "Table": "providers",
+        "Create Table": "CREATE TABLE `providers` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n  `service_id` bigint(20) unsigned NOT NULL,\n  `name` varchar(255) NOT NULL,\n  `email` varchar(255) DEFAULT NULL,\n  `phone` varchar(255) DEFAULT NULL,\n  `address` text DEFAULT NULL,\n  `is_active` tinyint(1) NOT NULL DEFAULT 1,\n  `created_at` timestamp NULL DEFAULT NULL,\n  `updated_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  KEY `providers_service_id_foreign` (`service_id`)\n) ENGINE=MyISAM AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    }
+]
