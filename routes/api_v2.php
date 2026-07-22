@@ -15,6 +15,8 @@ use App\Http\Controllers\Api\V2\EngagementController;
 use App\Http\Controllers\Api\V2\FriendController;
 use App\Http\Controllers\Api\V2\ProfileController;
 use App\Http\Controllers\Api\V2\ModerationController;
+use App\Http\Controllers\Api\V2\ServiceController;
+use App\Http\Controllers\Api\V2\ReviewController;
 use App\Http\Controllers\Api\{
     MarketplaceController,
     ProductController,
@@ -152,33 +154,66 @@ Route::middleware(['auth:sanctum'])->prefix('v2')->group(function () {
     Route::prefix('moderation')->group(function () {
         Route::post('/check', [ModerationController::class, 'check']);
     });
-    
-    
-Route::prefix('/market-place')->group(function () {
 
-    // 🏠 HOME
-    Route::get('/home', [MarketplaceController::class, 'home']);
+    // ─── Customer: Browse & Book Services ────────────────────────────────────
+    Route::prefix('services')->group(function () {
+        // Browse & search providers/services (with filters)
+        Route::get('/', [ServiceController::class, 'index']);
 
-    // 📦 PRODUCTS
-    Route::get('/products/category/{id}', [ProductController::class, 'byCategory']);
-    Route::get('/products/company/{id}', [CompanyController::class, 'companyProducts']);
-    Route::get('/product/{id}', [ProductController::class, 'show']);
+        // Provider detail page + all their services
+        Route::get('/{providerId}', [ServiceController::class, 'show'])->where('providerId', '[0-9]+');
 
-    // 📍 ADDRESS
-    Route::post('/address', [AddressController::class, 'store']);
-    Route::get('/address', [AddressController::class, 'index']);
-    Route::put('/address/{id}', [AddressController::class, 'update']);
-    Route::delete('/address/{id}', [AddressController::class, 'destroy']);
+        // Book a service (create booking + payment record)
+        Route::post('/book', [ServiceController::class, 'book']);
 
-    // 🎟️ COUPON
-    Route::post('/apply-coupon', [CouponController::class, 'apply']);
+        // Customer booking history (filter: ?status=pending|accepted|completed|rejected)
+        Route::get('/bookings', [ServiceController::class, 'myBookings']);
 
-    // 🛒 ORDER
-    Route::post('/order', [OrderController::class, 'store']);
-    Route::get('/orders', [OrderController::class, 'index']);
-});
-    
-});
+        // Single booking detail
+        Route::get('/bookings/{id}', [ServiceController::class, 'bookingDetail']);
+
+        // Cancel a pending booking
+        Route::post('/bookings/{id}/cancel', [ServiceController::class, 'cancelBooking']);
+
+        // Submit rating & review (only for completed bookings)
+        Route::post('/bookings/{id}/review', [ServiceController::class, 'submitReview']);
+
+        // Payment transaction detail for a booking
+        Route::get('/bookings/{id}/payment', [ServiceController::class, 'paymentDetail']);
+    });
+
+    // ─── Vendor: Reviews & Ratings ───────────────────────────────────────────
+    Route::prefix('vendor')->group(function () {
+        Route::get('/reviews', [ReviewController::class, 'vendorReviews']);
+        Route::post('/reviews/{reviewId}/reply', [ReviewController::class, 'replyToReview']);
+    });
+    // ─── Marketplace ────────────────────────────────────────────────────────
+    Route::prefix('/market-place')->group(function () {
+
+        // 🏠 HOME
+        Route::get('/home', [MarketplaceController::class, 'home']);
+
+        // 📦 PRODUCTS
+        Route::get('/products/category/{id}', [ProductController::class, 'byCategory']);
+        Route::get('/products/company/{id}', [CompanyController::class, 'companyProducts']);
+        Route::get('/product/{id}', [ProductController::class, 'show']);
+
+        // 📍 ADDRESS
+        Route::post('/address', [AddressController::class, 'store']);
+        Route::get('/address', [AddressController::class, 'index']);
+        Route::put('/address/{id}', [AddressController::class, 'update']);
+        Route::delete('/address/{id}', [AddressController::class, 'destroy']);
+
+        // 🎟️ COUPON
+        Route::post('/apply-coupon', [CouponController::class, 'apply']);
+
+        // 🛒 ORDER
+        Route::post('/order', [OrderController::class, 'store']);
+        Route::get('/orders', [OrderController::class, 'index']);
+    });
+
+}); // End auth:sanctum middleware group
+
 
 Route::prefix('v2')->group(function () {
 

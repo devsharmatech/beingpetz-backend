@@ -12,7 +12,14 @@ class ServiceBooking extends Model
         'service_id',
         'scheduled_at',
         'status',
-        'total_amount'
+        'total_amount',
+        'payment_status',
+        'payment_method',
+        'payment_gateway',
+        'transaction_id',
+        'payment_gateway_order_id',
+        'notes',
+        'pet_id',
     ];
 
     protected $casts = [
@@ -33,5 +40,20 @@ class ServiceBooking extends Model
     public function service()
     {
         return $this->belongsTo(Service::class);
+    }
+
+    public function providerService()
+    {
+        return $this->belongsTo(ProviderService::class, 'service_id');
+    }
+
+    public function review()
+    {
+        return $this->hasOne(ProviderReview::class, 'service_booking_id');
+    }
+
+    public function pet()
+    {
+        return $this->belongsTo(Pet::class, 'pet_id');
     }
 }
