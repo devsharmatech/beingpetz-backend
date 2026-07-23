@@ -160,9 +160,6 @@ Route::middleware(['auth:sanctum'])->prefix('v2')->group(function () {
         // Browse & search providers/services (with filters)
         Route::get('/', [ServiceController::class, 'index']);
 
-        // Provider detail page + all their services
-        Route::get('/{providerId}', [ServiceController::class, 'show'])->where('providerId', '[0-9]+');
-
         // Book a service (create booking + payment record)
         Route::post('/book', [ServiceController::class, 'book']);
 
@@ -178,8 +175,11 @@ Route::middleware(['auth:sanctum'])->prefix('v2')->group(function () {
         // Submit rating & review (only for completed bookings)
         Route::post('/bookings/{id}/review', [ServiceController::class, 'submitReview']);
 
-        // Payment transaction detail for a booking
+        // Get payment / transaction detail for a booking
         Route::get('/bookings/{id}/payment', [ServiceController::class, 'paymentDetail']);
+
+        // Provider detail page + all their services (wildcard parameter route must come LAST)
+        Route::get('/{providerId}', [ServiceController::class, 'show']);
     });
 
     // ─── Vendor: Reviews & Ratings ───────────────────────────────────────────

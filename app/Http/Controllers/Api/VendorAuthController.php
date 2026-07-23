@@ -183,6 +183,26 @@ class VendorAuthController extends Controller
             'is_active' => false // Typically requires admin approval
         ]);
 
+        // Auto-create initial ProviderService entries for each registered service category
+        if (!empty($servicesArray) && is_array($servicesArray)) {
+            foreach ($servicesArray as $cat) {
+                $catName = ucfirst($cat);
+                \App\Models\ProviderService::firstOrCreate(
+                    [
+                        'provider_id' => $provider->id,
+                        'category'    => $catName,
+                        'name'        => $catName . ' Service',
+                    ],
+                    [
+                        'description'      => $catName . ' service offered by ' . ($provider->business_name ?? $provider->name),
+                        'price'            => $provider->start_pricing ? (float)$provider->start_pricing : 500,
+                        'duration_minutes' => 60,
+                        'is_active'        => 1,
+                    ]
+                );
+            }
+        }
+
         return response()->json([
             'status' => true,
             'message' => 'Vendor registered successfully. Please login using your phone number to receive an OTP.',

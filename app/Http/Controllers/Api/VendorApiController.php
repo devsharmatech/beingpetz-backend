@@ -255,7 +255,9 @@ class VendorApiController extends Controller
         $provider = Provider::where('user_id', $user->id)->first();
         if (!$provider) return response()->json(['status' => false, 'message' => 'Provider not found'], 200);
 
-        $validator = Validator::make($request->all(), [
+        $scheduledAt = $request->input('scheduled_at') ?? $request->input('new_schedule');
+
+        $validator = Validator::make(['scheduled_at' => $scheduledAt], [
             'scheduled_at' => 'required|date|after:now',
         ]);
 
@@ -266,7 +268,7 @@ class VendorApiController extends Controller
         $booking = ServiceBooking::where('provider_id', $provider->id)->where('id', $id)->first();
         if (!$booking) return response()->json(['status' => false, 'message' => 'Booking not found'], 200);
 
-        $booking->scheduled_at = Carbon::parse($request->scheduled_at)->format('Y-m-d H:i:s');
+        $booking->scheduled_at = Carbon::parse($scheduledAt)->format('Y-m-d H:i:s');
         // Depending on business logic, we could change status back to pending to notify user
         // $booking->status = 'pending';
         $booking->save();

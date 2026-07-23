@@ -35,7 +35,7 @@ class ReviewController extends Controller
 
             $reviews = ProviderReview::where('provider_id', $provider->id)
                 ->with([
-                    'user:id,first_name,last_name,name,profile_image',
+                    'user:id,first_name,last_name,username,profile',
                     'serviceBooking.providerService:id,name,category',
                     'serviceBooking.pet:id,name,breed',
                 ])
@@ -44,7 +44,7 @@ class ReviewController extends Controller
 
             $formatted = $reviews->map(function ($review) {
                 $userName = $review->user
-                    ? ($review->user->first_name ? $review->user->first_name . ' ' . $review->user->last_name : $review->user->name)
+                    ? ($review->user->first_name ? trim($review->user->first_name . ' ' . $review->user->last_name) : $review->user->username)
                     : 'Anonymous';
 
                 $serviceName = $review->serviceBooking?->providerService?->name ?? 'Service';
@@ -60,7 +60,7 @@ class ReviewController extends Controller
                 return [
                     'id'          => $review->id,
                     'user_name'   => $userName,
-                    'user_image'  => $review->user?->profile_image ? asset('storage/' . $review->user->profile_image) : null,
+                    'user_image'  => $review->user?->profile_url ?? ($review->user?->profile ? asset('storage/' . $review->user->profile) : null),
                     'subtitle'    => $subtitle,
                     'rating'      => (float)$review->rating,
                     'comment'     => $review->comment,

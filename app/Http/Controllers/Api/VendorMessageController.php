@@ -12,8 +12,14 @@ class VendorMessageController extends Controller
     public function history(Request $request)
     {
         $user = auth()->user();
-        $provider = Provider::where('user_id', $user->id)->first();
-        if (!$provider) return response()->json(['status' => false, 'message' => 'Provider not found'], 200);
+
+        // Robust provider lookup using email, phone, or user_id
+        $provider = Provider::findForUser($user);
+
+        // Allow access if provider record exists OR user role is vendor
+        if (!$provider && $user->role !== 'vendor' && ($user->role_name ?? '') !== 'vendor') {
+            return response()->json(['status' => false, 'message' => 'Provider not found'], 200);
+        }
 
         $messages = FriendMessage::where('sender_id', $user->id)
             ->orWhere('receiver_id', $user->id)

@@ -58,4 +58,28 @@ class Provider extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function providerServices()
+    {
+        return $this->hasMany(ProviderService::class, 'provider_id')->where(function ($q) {
+            $q->where('is_active', 1)->orWhereNull('is_active');
+        });
+    }
+
+    public static function findForUser($user)
+    {
+        if (!$user) return null;
+
+        $provider = static::where('user_id', $user->id)
+            ->when($user->email, function ($q) use ($user) { $q->orWhere('email', $user->email); })
+            ->when($user->phone, function ($q) use ($user) { $q->orWhere('phone', $user->phone); })
+            ->first();
+
+        if ($provider && !$provider->user_id) {
+            $provider->user_id = $user->id;
+            $provider->save();
+        }
+
+        return $provider;
+    }
 }

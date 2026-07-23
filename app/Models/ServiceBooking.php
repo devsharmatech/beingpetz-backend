@@ -20,6 +20,8 @@ class ServiceBooking extends Model
         'payment_gateway_order_id',
         'notes',
         'pet_id',
+        'address_id',
+        'address',
     ];
 
     protected $casts = [
